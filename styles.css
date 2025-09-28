@@ -30,6 +30,58 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
+    transition: background-image 0.5s ease-in-out;
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+}
+
+/* 添加背景图片时的遮罩效果 */
+body.with-background::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(250, 250, 250, 0.85);
+    z-index: -1;
+}
+
+body {
+    position: relative;
+    z-index: 0;
+}
+
+/* 背景切换按钮样式 */
+.change-background-btn {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.change-background-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
+    background: var(--secondary-color);
+}
+
+.change-background-btn:active {
+    transform: translateY(0);
 }
 
 #app {
@@ -118,16 +170,41 @@ body {
 .result-badge {
     display: inline-flex;
     align-items: center;
-    padding: 15px 30px;
+    padding: 20px 35px;
     background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
     color: white;
     border-radius: 50px;
     font-weight: 600;
-    font-size: 1.4rem;
+    font-size: 1.6rem;
     box-shadow: var(--shadow);
     animation: popIn 0.4s ease-out;
     position: relative;
     overflow: hidden;
+    min-width: 120px;
+    justify-content: center;
+}
+
+/* 前11名金色样式 */
+.result-badge.golden {
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+}
+
+.result-badge.golden::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transform: rotate(30deg);
+    animation: shine 2s infinite;
+}
+
+@keyframes shine {
+    0% { transform: translateX(-100%) rotate(30deg); }
+    100% { transform: translateX(100%) rotate(30deg); }
 }
 
 @keyframes popIn {
@@ -136,6 +213,7 @@ body {
     100% { opacity: 1; transform: scale(1); }
 }
 
+/* Controls section */
 .controls {
     display: flex;
     flex-wrap: wrap;
@@ -145,6 +223,20 @@ body {
     margin-top: 50px;
     position: relative;
     z-index: 1;
+}
+
+/* Toggle switch */
+.toggle-switch {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.toggle-label {
+    font-size: 14px;
+    color: var(--text-color);
+    user-select: none;
 }
 
 .mdui-btn {

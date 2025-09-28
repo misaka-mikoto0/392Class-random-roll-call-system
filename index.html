@@ -10,6 +10,8 @@
     <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/mdui/2.1.4/mdui.min.css">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- 音乐播放器样式 -->
+    <link rel="stylesheet" id="font-awesome-css" href="https://cdn.staticfile.net/font-awesome/4.7.0/css/font-awesome.min.css" type="text/css" media="all">
 </head>
 <body>
     <div id="app">
@@ -31,7 +33,7 @@
                     <div v-else>
                         <div class="result-title">抽取结果</div>
                         <div class="result-names">
-                            <span v-for="(student, index) in currentResult" :key="index" class="result-badge">
+                            <span v-for="(student, index) in currentResult" :key="index" :class="['result-badge', { 'golden': student.rank <= 11 }]">
                                 {{ student.name }}
                             </span>
                         </div>
@@ -47,10 +49,21 @@
                         <i class="fas fa-user-plus"></i>
                         <input type="number" v-model.number="drawCount" placeholder="抽取人数" min="1">
                     </div>
+                    <button class="mdui-btn mdui-color-purple mdui-ripple" @click="toggleMusic" :disabled="isRolling">
+                        <i class="fas fa-music mdui-m-r-1"></i>
+                        {{ isMusicPlaying ? '暂停音乐' : '播放音乐' }}
+                    </button>
                     <button class="mdui-btn mdui-color-green mdui-ripple" @click="startDrawing" :disabled="isRolling">
                         <i class="mdui-icon material-icons mdui-m-r-1">autorenew</i>
                         {{ isRolling ? '抽取中...' : '开始抽取' }}
                     </button>
+                    <div class="toggle-switch">
+                        <label class="mdui-switch">
+                            <input type="checkbox" v-model="onlyTop11">
+                            <i class="mdui-switch-icon"></i>
+                        </label>
+                        <span class="toggle-label">仅抽取前11名</span>
+                    </div>
                 </div>
             </div>
 
@@ -200,9 +213,72 @@
         </div>
     </div>
 
+    <!-- 背景切换按钮 -->
+    <button class="change-background-btn" id="changeBackgroundBtn">
+        <i class="fas fa-image"></i>
+    </button>
+
     <!-- 引入外部JavaScript库 -->
     <script src="https://cdn.bootcdn.net/ajax/libs/mdui/2.1.4/mdui.global.js"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- 音乐播放器所需脚本 -->
+    <script src="https://cdn.staticfile.net/jquery/3.5.1/jquery.min.js"></script>
+    <script id="xplayer" src="https://y.cenguigui.cn/Static/player5/js/player.js" key="68397e7621e83" m="1"></script>
+    <!-- 背景切换功能 -->
+    <script>
+        // 切换原神背景图片
+        $(document).ready(function() {
+            $('#changeBackgroundBtn').click(function() {
+                // 显示加载状态
+                const btn = $(this);
+                btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
+                
+                $.ajax({
+                    url: 'https://v2.xxapi.cn/api/ys',
+                    type: 'get',
+                    beforeSend: function() {
+                        // 请求中执行的代码
+                    },
+                    complete: function() {
+                        // 请求完成执行的代码
+                        btn.prop('disabled', false).html('<i class="fas fa-image"></i>');
+                    },
+                    error: function() {
+                        // 请求失败执行的代码
+                        alert('获取背景图片失败，请稍后再试');
+                    },
+                    success: function(res) {
+                        // 状态码 200 表示请求成功
+                        if (res.code === 200 && res.data) {
+                            console.log('背景图片更新为:', res.data);
+                            // 更新body背景图片
+                            document.body.style.backgroundImage = `url(${res.data})`;
+                            // 添加带背景的类
+                            document.body.classList.add('with-background');
+                            
+                            // 显示成功提示
+                            const toast = document.createElement('div');
+                            toast.className = 'toast';
+                            toast.innerHTML = '<strong>成功</strong><span>背景图片已更新</span>';
+                            document.querySelector('.toast-container').appendChild(toast);
+                            toast.style.display = 'block';
+                            
+                            // 3秒后移除提示
+                            setTimeout(() => {
+                                toast.style.display = 'none';
+                                setTimeout(() => {
+                                    toast.remove();
+                                }, 300);
+                            }, 3000);
+                        } else {
+                            alert('获取背景图片失败: ' + (res.msg || '未知错误'));
+                            console.error('获取背景图片失败', res);
+                        }
+                    }
+                });
+            });
+        });
+    </script>
     <!-- 引入外部JavaScript文件 -->
     <script src="script.js"></script>
 </body>

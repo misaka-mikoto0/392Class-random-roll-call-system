@@ -62,6 +62,8 @@ createApp({
             title: '',
             message: ''
         });
+        const isMusicPlaying = ref(false);
+        const onlyTop11 = ref(false);
 
         // 计算属性
         const participationPercentage = computed(() => {
@@ -102,29 +104,45 @@ createApp({
                 showToast('没有学生', '请先选择参与的学生');
                 return;
             }
-            if (drawCount.value > selectedStudents.value.length) {
-                showToast('人数不足', `只有 ${selectedStudents.value.length} 名学生参与，无法抽取 ${drawCount.value} 人`);
-                return;
+            
+            // 如果启用了仅抽取前11名，过滤出前11名学生
+            let availableStudents = selectedStudents.value;
+            if (onlyTop11.value) {
+                availableStudents = selectedStudents.value.filter(s => s.rank <= 11);
+                if (availableStudents.length === 0) {
+                    showToast('人数不足', '没有前11名学生参与抽取');
+                    return;
+                }
+                if (drawCount.value > availableStudents.length) {
+                    showToast('人数不足', `只有 ${availableStudents.length} 名前11名学生参与，无法抽取 ${drawCount.value} 人`);
+                    return;
+                }
+            } else {
+                if (drawCount.value > selectedStudents.value.length) {
+                    showToast('人数不足', `只有 ${selectedStudents.value.length} 名学生参与，无法抽取 ${drawCount.value} 人`);
+                    return;
+                }
             }
+            
             isRolling.value = true;
             currentResult.value = [];
 
             let counter = 0;
             const maxCycles = 30;
             const interval = setInterval(() => {
-                const randomIndex = Math.floor(Math.random() * selectedStudents.value.length);
-                currentResult.value = [selectedStudents.value[randomIndex]];
+                const randomIndex = Math.floor(Math.random() * availableStudents.length);
+                currentResult.value = [availableStudents[randomIndex]];
                 counter++;
                 if (counter >= maxCycles) {
                     clearInterval(interval);
-                    finishDrawing();
+                    finishDrawing(availableStudents);
                 }
             }, 100);
         };
 
-        const finishDrawing = () => {
+        const finishDrawing = (availableStudents) => {
             // Fisher-Yates 洗牌算法
-            const shuffled = [...selectedStudents.value];
+            const shuffled = [...availableStudents];
             for (let i = shuffled.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
@@ -160,6 +178,32 @@ createApp({
             }, 3000);
         };
 
+        const toggleMusic = () => {
+            if (isMusicPlaying.value) {
+                // 暂停音乐
+                if (window.myhkplayer && window.myhkplayer.pause) {
+                    window.myhkplayer.pause();
+                }
+                isMusicPlaying.value = false;
+                showToast('提示', '音乐已暂停');
+            } else {
+                // 播放音乐
+                if (window.myhkplayer && window.myhkplayer.play) {
+                    window.myhkplayer.play();
+                } else {
+                    // 尝试初始化播放器
+                    try {
+                        // 这里可以添加音乐播放的初始化逻辑
+                        showToast('提示', '音乐播放器正在准备');
+                    } catch (error) {
+                        showToast('错误', '音乐播放失败');
+                    }
+                }
+                isMusicPlaying.value = true;
+                showToast('提示', '音乐已开始播放');
+            }
+        };
+
         // 生命周期钩子
         onMounted(() => {
             selectedStudents.value = [...students.value];
@@ -176,12 +220,15 @@ createApp({
             currentResult,
             showModal,
             toast,
+            isMusicPlaying,
+            onlyTop11,
             participationPercentage,
             toggleStudentSelection,
             isSelected,
             confirmSelection,
             startDrawing,
-            showToast
+            showToast,
+            toggleMusic
         };
     }
 }).mount('#app');
