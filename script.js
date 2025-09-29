@@ -190,17 +190,40 @@ createApp({
                 // 播放音乐
                 if (window.myhkplayer && window.myhkplayer.play) {
                     window.myhkplayer.play();
+                    showToast('提示', '音乐已开始播放');
                 } else {
                     // 尝试初始化播放器
                     try {
-                        // 这里可以添加音乐播放的初始化逻辑
+                        // 动态创建播放器元素
+                        if (!document.getElementById('music')) {
+                            const musicDiv = document.createElement('div');
+                            musicDiv.id = 'music';
+                            musicDiv.setAttribute('key', '68397e7621e83');
+                            musicDiv.setAttribute('api', 'https://y.cenguigui.cn/');
+                            document.body.appendChild(musicDiv);
+                        }
+                        
+                        // 动态加载播放器脚本
+                        if (!document.getElementById('xplayer')) {
+                            const script = document.createElement('script');
+                            script.id = 'xplayer';
+                            script.src = 'https://y.cenguigui.cn/Static/player14/js/player.js';
+                            script.onload = function() {
+                                // 脚本加载完成后尝试播放
+                                setTimeout(() => {
+                                    if (window.myhkplayer && window.myhkplayer.play) {
+                                        window.myhkplayer.play();
+                                    }
+                                }, 500);
+                            };
+                            document.body.appendChild(script);
+                        }
                         showToast('提示', '音乐播放器正在准备');
                     } catch (error) {
                         showToast('错误', '音乐播放失败');
                     }
                 }
                 isMusicPlaying.value = true;
-                showToast('提示', '音乐已开始播放');
             }
         };
 
