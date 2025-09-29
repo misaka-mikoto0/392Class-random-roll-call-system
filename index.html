@@ -220,6 +220,8 @@
 
     <!-- 引入外部JavaScript库 -->
     <script src="https://cdn.bootcdn.net/ajax/libs/mdui/2.1.4/mdui.global.js"></script>
+    <!-- jQuery -->
+    <script src="https://cdn.staticfile.net/jquery/3.5.1/jquery.min.js"></script>
     <!-- 背景切换功能 -->
     <script>
         // 切换原神背景图片
@@ -234,7 +236,7 @@
             // 更新背景图片的函数
             function updateBackgroundImage() {
                 $.ajax({
-                    url: 'https://v2.xxapi.cn/api/ys',
+                    url: 'https://cdn.jsdelivr.net/gh/API-Hub/api@main/ys',
                     type: 'get',
                     success: function(res) {
                         // 状态码 200 表示请求成功
