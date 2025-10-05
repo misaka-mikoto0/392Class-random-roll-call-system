@@ -64,6 +64,12 @@ createApp({
         });
         const isMusicPlaying = ref(false);
         const onlyTop11 = ref(false);
+        // 原神一言状态
+        const quote = ref({
+            content: '',
+            author: ''
+        });
+        const isFetchingQuote = ref(false);
 
         // 计算属性
         const participationPercentage = computed(() => {
@@ -83,6 +89,16 @@ createApp({
 
         const isSelected = (student) => {
             return selectedStudents.value.some(s => s.id === student.id);
+        };
+
+        const selectAllStudents = () => {
+            selectedStudents.value = [...students.value];
+            showToast('全选成功', `已选择全部 ${students.value.length} 名学生`);
+        };
+
+        const deselectAllStudents = () => {
+            selectedStudents.value = [];
+            showToast('反选成功', '已取消选择所有学生');
         };
 
         const confirmSelection = () => {
@@ -227,9 +243,56 @@ createApp({
             }
         };
 
+        // 获取原神一言的方法
+        const fetchGenshinQuote = async () => {
+            isFetchingQuote.value = true;
+            try {
+                const response = await fetch('https://gd.moyanjdc.top/api/yiyan');
+                if (!response.ok) {
+                    throw new Error('网络请求失败');
+                }
+                const data = await response.json();
+                quote.value = {
+                    content: data.content || '人生如逆旅，我亦是行人',
+                    author: data.author || '原神'
+                };
+                // 保存到本地存储，以便下次访问时使用
+                localStorage.setItem('genshinQuote', JSON.stringify(quote.value));
+            } catch (error) {
+                console.error('获取原神一言失败:', error);
+                showToast('提示', '获取一言失败，显示默认内容');
+                // 如果失败，尝试使用本地存储中的数据
+                const savedQuote = localStorage.getItem('genshinQuote');
+                if (savedQuote) {
+                    try {
+                        quote.value = JSON.parse(savedQuote);
+                    } catch (e) {
+                        // 本地存储数据无效
+                        quote.value = {
+                            content: '人生如逆旅，我亦是行人',
+                            author: '原神'
+                        };
+                    }
+                } else {
+                    // 设置默认值
+                    quote.value = {
+                        content: '人生如逆旅，我亦是行人',
+                        author: '原神'
+                    };
+                }
+            } finally {
+                isFetchingQuote.value = false;
+            }
+        };
+
         // 生命周期钩子
         onMounted(() => {
             selectedStudents.value = [...students.value];
+            // 页面加载时自动获取原神一言
+            fetchGenshinQuote();
+            
+            // 设置定时器，每30秒自动刷新一次原神一言
+            setInterval(fetchGenshinQuote, 30000);
         });
 
         // 暴露给模板使用的变量和方法
@@ -248,10 +311,15 @@ createApp({
             participationPercentage,
             toggleStudentSelection,
             isSelected,
+            selectAllStudents,
+            deselectAllStudents,
             confirmSelection,
             startDrawing,
             showToast,
-            toggleMusic
+            toggleMusic,
+            quote,
+            isFetchingQuote,
+            fetchGenshinQuote
         };
     }
 }).mount('#app');

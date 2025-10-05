@@ -21,12 +21,20 @@
                 <h1 class="app-title">392班 · 雅集点名</h1>
                 <p class="app-subtitle">以书卷气，行公平事</p>
             </div>
-
-            <!-- Main Content Area -->
-            <div class="main-content">
+            
+            <!-- 原神一言展示区域 - 放在内容区域上方 -->
+            <div class="genshin-quote full-width">
+                <div class="quote-content">{{ quote.content || '正在加载一言...' }}</div>
+                <div class="quote-author">— {{ quote.author || '原神' }}</div>
+            </div>
+            
+            <!-- 内容区域容器 -->
+            <div class="content-wrapper optimized">
+                <!-- Main Content Area -->
+                <div class="main-content">
                 <div class="result-display">
                     <div v-if="!currentResult.length" class="placeholder-text">
-                        <i class="fas fa-hand-point-up fa-3x mdui-m-b-4" style="color: var(--primary-color);"></i>
+                        <i class="fas fa-random fa-4x mdui-m-b-4" style="color: var(--primary-color);"></i>
                         <p>点击下方按钮开始抽取</p>
                         <p class="mdui-text-color-black-secondary mdui-m-t-2">系统将公平随机选择学生</p>
                     </div>
@@ -41,34 +49,36 @@
                 </div>
 
                 <div class="controls">
-                    <button class="mdui-btn mdui-color-indigo mdui-ripple" @click="showModal = true">
-                        <i class="mdui-icon material-icons mdui-m-r-1">people</i>
-                        选择学生
-                    </button>
-                    <div class="input-group">
-                        <i class="fas fa-user-plus"></i>
-                        <input type="number" v-model.number="drawCount" placeholder="抽取人数" min="1">
+                    <div class="primary-controls">
+                        <button class="mdui-btn mdui-color-indigo mdui-ripple select-students-btn" @click="showModal = true">
+                            <i class="mdui-icon material-icons mdui-m-r-1">people</i>
+                            选择学生
+                        </button>
+                        <div class="input-group">
+                            <i class="fas fa-user-plus"></i>
+                            <input type="number" v-model.number="drawCount" placeholder="抽取人数" min="1">
+                        </div>
+                        <button class="mdui-btn mdui-color-green mdui-ripple start-draw-btn" @click="startDrawing" :disabled="isRolling">
+                            <i class="mdui-icon material-icons mdui-m-r-1">autorenew</i>
+                            {{ isRolling ? '抽取中...' : '开始抽取' }}
+                        </button>
                     </div>
-                    <button class="mdui-btn mdui-color-purple mdui-ripple" @click="toggleMusic" :disabled="isRolling">
-                        <i class="fas fa-music mdui-m-r-1"></i>
-                        {{ isMusicPlaying ? '暂停音乐' : '播放音乐' }}
-                    </button>
-                    <button class="mdui-btn mdui-color-green mdui-ripple" @click="startDrawing" :disabled="isRolling">
-                        <i class="mdui-icon material-icons mdui-m-r-1">autorenew</i>
-                        {{ isRolling ? '抽取中...' : '开始抽取' }}
-                    </button>
-                    <div class="toggle-switch">
-                        <label class="mdui-switch">
-                            <input type="checkbox" v-model="onlyTop11">
-                            <i class="mdui-switch-icon"></i>
-                        </label>
-                        <span class="toggle-label">仅抽取前11名</span>
+
+                    <div class="control-switches">
+                        <div class="switch-item">
+                            <label class="switch">
+                                <input type="checkbox" v-model="onlyTop11">
+                                <span class="slider round"></span>
+                            </label>
+                            <span class="switch-label">仅抽取前11名</span>
+                        </div>
                     </div>
                 </div>
             </div>
-
-            <!-- Sidebar -->
-            <div class="sidebar">
+            
+                <!-- Sidebar -->
+                <div class="sidebar">
+                
                 <!-- Stats Card -->
                 <div class="sidebar-card">
                     <div class="card-title">
@@ -170,37 +180,65 @@
             </div>
         </div>
 
-        <!-- Student Selection Modal -->
-        <div class="mdui-dialog" :class="{ 'mdui-dialog-open': showModal }">
-            <div class="modal-header">
-                <h3><i class="mdui-icon material-icons mdui-m-r-2">person_add</i>选择参与学生</h3>
-                <button class="mdui-btn mdui-btn-icon mdui-ripple" @click="showModal = false">
-                    <i class="mdui-icon material-icons">close</i>
-                </button>
-            </div>
-            <div class="modal-body">
-                <div v-if="students.length === 0" class="mdui-text-center mdui-p-y-5 mdui-text-color-black-secondary">
-                    没有可用的学生数据
+        <!-- 学生选择模态窗口 -->
+        <div class="student-modal-overlay" v-show="showModal" @click="showModal = false">
+            <div class="student-modal" @click.stop>
+                <div class="modal-header">
+                    <h3><i class="fas fa-users"></i>选择参与学生</h3>
+                    <button class="close-btn" @click="showModal = false">
+                        <i class="fas fa-times"></i>
+                    </button>
                 </div>
-                <div v-else class="person-list">
-                    <div v-for="student in students" :key="student.id"
-                         class="person-item" :class="{ 'selected': isSelected(student) }"
-                         @click="toggleStudentSelection(student)">
-                        <div class="person-avatar">{{ student.name.charAt(0) }}</div>
-                        <div class="person-info">
-                            <div class="person-name">{{ student.name }}</div>
-                            <div class="person-rank">排名: {{ student.rank }}</div>
-                        </div>
-                        <div class="mdui-checkbox">
-                            <input type="checkbox" :checked="isSelected(student)" />
-                            <i class="mdui-checkbox-icon"></i>
+                
+                <div class="modal-controls">
+                    <div class="selection-stats">
+                        <span class="selected-count">已选择: {{ selectedStudents.length }} / {{ students.length }}</span>
+                        <div class="control-buttons">
+                            <button class="control-btn select-all-btn" @click="selectAllStudents">
+                                <i class="fas fa-check-double"></i>全选
+                            </button>
+                            <button class="control-btn deselect-all-btn" @click="deselectAllStudents">
+                                <i class="fas fa-times-circle"></i>反选
+                            </button>
                         </div>
                     </div>
                 </div>
-            </div>
-            <div class="modal-actions">
-                <button class="mdui-btn mdui-ripple" @click="showModal = false">取消</button>
-                <button class="mdui-btn mdui-btn-raised mdui-ripple mdui-color-indigo" @click="confirmSelection">确认选择</button>
+                
+                <div class="modal-body">
+                    <div v-if="students.length === 0" class="empty-state">
+                        <i class="fas fa-user-slash"></i>
+                        <p>没有可用的学生数据</p>
+                    </div>
+                    <div v-else class="student-grid">
+                        <div v-for="student in students" :key="student.id"
+                             class="student-card" :class="{ 'selected': isSelected(student) }"
+                             @click="toggleStudentSelection(student)">
+                            <div class="student-avatar" :class="{ 'top-student': student.rank <= 11 }">
+                                {{ student.name.charAt(0) }}
+                                <div v-if="student.rank <= 11" class="crown-icon">
+                                    <i class="fas fa-crown"></i>
+                                </div>
+                            </div>
+                            <div class="student-info">
+                                <div class="student-name">{{ student.name }}</div>
+                                <div class="student-rank">第{{ student.rank }}名</div>
+                            </div>
+                            <div class="selection-indicator">
+                                <i class="fas fa-check-circle" v-if="isSelected(student)"></i>
+                                <i class="far fa-circle" v-else></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button class="modal-btn cancel-btn" @click="showModal = false">
+                        <i class="fas fa-times"></i>取消
+                    </button>
+                    <button class="modal-btn confirm-btn" @click="confirmSelection">
+                        <i class="fas fa-check"></i>确认选择 ({{ selectedStudents.length }})
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -213,10 +251,15 @@
         </div>
     </div>
 
-    <!-- 背景切换按钮 -->
-    <button class="change-background-btn" id="changeBackgroundBtn">
-        <i class="fas fa-image"></i>
-    </button>
+    <!-- 浮动控制按钮组 -->
+    <div class="floating-controls">
+        <button class="floating-btn music-btn" @click="toggleMusic" :disabled="isRolling" :title="isMusicPlaying ? '暂停音乐' : '播放音乐'">
+            <i class="fas" :class="isMusicPlaying ? 'fa-pause' : 'fa-music'"></i>
+        </button>
+        <button class="floating-btn background-btn" id="changeBackgroundBtn" title="切换背景">
+            <i class="fas fa-image"></i>
+        </button>
+    </div>
 
     <!-- 引入外部JavaScript库 -->
     <script src="https://cdn.bootcdn.net/ajax/libs/mdui/2.1.4/mdui.global.js"></script>
@@ -316,7 +359,7 @@
             }
             
             // 点击按钮切换背景
-            $('#changeBackgroundBtn').click(function() {
+            $(document).on('click', '#changeBackgroundBtn', function() {
                 // 显示加载状态
                 const btn = $(this);
                 btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
