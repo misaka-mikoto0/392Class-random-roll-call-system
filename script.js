@@ -1,9 +1,10 @@
-const { createApp, ref, computed, onMounted } = Vue;
+// Vue应用主文件
 
-createApp({
+// 创建Vue应用实例
+const app = Vue.createApp({
     setup() {
         // 学生数据
-        const students = ref([
+        const students = Vue.ref([
             { id: 1, name: '王铖浩', rank: 1, probability: 1 },
             { id: 2, name: '原梓杰', rank: 2, probability: 1 },
             { id: 3, name: '茹柯臻', rank: 3, probability: 1 },
@@ -48,152 +49,148 @@ createApp({
             { id: 43, name: '赵渊博', rank: 43, probability: 1 },
             { id: 44, name: '王沐勋', rank: 44, probability: 1 }
         ]);
-        
+
         // 状态管理
-        const selectedStudents = ref([]);
-        const history = ref([]);
-        const totalDraws = ref(0);
-        const drawCount = ref(1);
-        const isRolling = ref(false);
-        const currentResult = ref([]);
-        const showModal = ref(false);
-        const toast = ref({
-            show: false,
-            title: '',
-            message: ''
-        });
-        const isMusicPlaying = ref(false);
-        const onlyTop11 = ref(false);
-        // 原神一言状态
-        const quote = ref({
-            content: '',
-            author: ''
-        });
-        const isFetchingQuote = ref(false);
+        const selectedStudents = Vue.ref([]);
+        const history = Vue.ref([]);
+        const totalDraws = Vue.ref(0);
+        const drawCount = Vue.ref(1);
+        const isRolling = Vue.ref(false);
+        const currentResult = Vue.ref([]);
+        const showModal = Vue.ref(false);
+        const toast = Vue.ref({ show: false, title: '', message: '' });
+        const isMusicPlaying = Vue.ref(false);
+        const onlyTop11 = Vue.ref(false);
+        const quote = Vue.ref({ content: '', author: '' });
+        const isFetchingQuote = Vue.ref(false);
 
         // 计算属性
-        const participationPercentage = computed(() => {
-            if (students.value.length === 0) return 0;
-            return (selectedStudents.value.length / students.value.length) * 100;
+        const participationPercentage = Vue.computed(() => {
+            return students.value.length > 0 ? (selectedStudents.value.length / students.value.length) * 100 : 0;
         });
 
-        // 方法
+        // 切换学生选择状态
         const toggleStudentSelection = (student) => {
             const index = selectedStudents.value.findIndex(s => s.id === student.id);
-            if (index === -1) {
-                selectedStudents.value.push(student);
-            } else {
+            if (index > -1) {
                 selectedStudents.value.splice(index, 1);
+            } else {
+                selectedStudents.value.push(student);
             }
         };
 
+        // 检查学生是否已选择
         const isSelected = (student) => {
             return selectedStudents.value.some(s => s.id === student.id);
         };
 
+        // 选择所有学生
         const selectAllStudents = () => {
             selectedStudents.value = [...students.value];
-            showToast('全选成功', `已选择全部 ${students.value.length} 名学生`);
         };
 
+        // 取消选择所有学生
         const deselectAllStudents = () => {
             selectedStudents.value = [];
-            showToast('反选成功', '已取消选择所有学生');
         };
 
+        // 确认学生选择
         const confirmSelection = () => {
             if (selectedStudents.value.length === 0) {
-                selectedStudents.value = [...students.value];
-                showToast('提示', '已默认选择全部学生');
-            } else {
-                showToast('选择已更新', `已选择 ${selectedStudents.value.length} 名学生参与抽取`);
+                showToast('提示', '请至少选择一名学生');
+                return;
             }
             showModal.value = false;
+            showToast('成功', '学生选择已确认');
         };
 
+        // Fisher-Yates 洗牌算法
+        const shuffleArray = (array) => {
+            const newArray = [...array];
+            for (let i = newArray.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+            }
+            return newArray;
+        };
+
+        // 开始抽取
         const startDrawing = () => {
-            if (drawCount.value < 1) {
-                showToast('输入错误', '请输入有效的抽取人数');
-                return;
-            }
             if (selectedStudents.value.length === 0) {
-                showToast('没有学生', '请先选择参与的学生');
+                showToast('提示', '请先选择参与抽取的学生');
                 return;
             }
-            
-            // 如果启用了仅抽取前11名，过滤出前11名学生
-            let availableStudents = selectedStudents.value;
+
+            if (isRolling.value) return;
+
+            // 根据onlyTop11过滤学生
+            let eligibleStudents = [...selectedStudents.value];
             if (onlyTop11.value) {
-                availableStudents = selectedStudents.value.filter(s => s.rank <= 11);
-                if (availableStudents.length === 0) {
-                    showToast('人数不足', '没有前11名学生参与抽取');
-                    return;
-                }
-                if (drawCount.value > availableStudents.length) {
-                    showToast('人数不足', `只有 ${availableStudents.length} 名前11名学生参与，无法抽取 ${drawCount.value} 人`);
-                    return;
-                }
-            } else {
-                if (drawCount.value > selectedStudents.value.length) {
-                    showToast('人数不足', `只有 ${selectedStudents.value.length} 名学生参与，无法抽取 ${drawCount.value} 人`);
+                eligibleStudents = eligibleStudents.filter(s => s.rank <= 11);
+                if (eligibleStudents.length === 0) {
+                    showToast('提示', '当前选择的学生中没有前11名学生');
                     return;
                 }
             }
-            
+
+            // 检查抽取人数是否合理
+            const count = Math.min(Math.max(1, drawCount.value), eligibleStudents.length);
+            drawCount.value = count;
+
             isRolling.value = true;
             currentResult.value = [];
 
-            let counter = 0;
-            const maxCycles = 30;
-            const interval = setInterval(() => {
-                const randomIndex = Math.floor(Math.random() * availableStudents.length);
-                currentResult.value = [availableStudents[randomIndex]];
-                counter++;
-                if (counter >= maxCycles) {
-                    clearInterval(interval);
-                    finishDrawing(availableStudents);
+            // 动画效果
+            const animationDuration = 1000; // 动画持续时间（毫秒）
+            const frameDuration = 50; // 每帧持续时间（毫秒）
+            const frameCount = animationDuration / frameDuration;
+            let currentFrame = 0;
+
+            const animateRolling = () => {
+                if (currentFrame < frameCount) {
+                    // 随机显示一个学生
+                    const randomIndex = Math.floor(Math.random() * eligibleStudents.length);
+                    currentResult.value = [eligibleStudents[randomIndex]];
+                    currentFrame++;
+                    setTimeout(animateRolling, frameDuration);
+                } else {
+                    // 最终结果
+                    const shuffled = shuffleArray(eligibleStudents);
+                    currentResult.value = shuffled.slice(0, count);
+                    
+                    // 更新历史记录
+                    totalDraws.value++;
+                    const now = new Date();
+                    const timeString = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+                    history.value.unshift({
+                        time: timeString,
+                        count: count,
+                        people: currentResult.value
+                    });
+                    
+                    // 保留最近10条记录
+                    if (history.value.length > 10) {
+                        history.value.pop();
+                    }
+                    
+                    isRolling.value = false;
+                    showToast('成功', `已抽取${count}名学生`);
                 }
-            }, 100);
-        };
-
-        const finishDrawing = (availableStudents) => {
-            // Fisher-Yates 洗牌算法
-            const shuffled = [...availableStudents];
-            for (let i = shuffled.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-            }
-            const results = shuffled.slice(0, drawCount.value);
-            currentResult.value = results;
-            isRolling.value = false;
-            saveResult(results);
-        };
-
-        const saveResult = (results) => {
-            const resultData = {
-                time: new Date().toLocaleString('zh-CN'),
-                people: results,
-                count: results.length
             };
-            history.value.unshift(resultData);
-            totalDraws.value++;
-            if (history.value.length > 5) {
-                history.value.pop();
-            }
-            showToast('抽取完成', `成功抽取 ${results.length} 名学生`);
+
+            // 开始动画
+            animateRolling();
         };
 
+        // 显示提示信息
         const showToast = (title, message) => {
-            toast.value = {
-                show: true,
-                title,
-                message
-            };
+            toast.value = { show: true, title, message };
             setTimeout(() => {
                 toast.value.show = false;
             }, 3000);
         };
 
+        // 切换音乐播放状态
         const toggleMusic = () => {
             if (isMusicPlaying.value) {
                 // 暂停音乐
@@ -201,49 +198,27 @@ createApp({
                     window.myhkplayer.pause();
                 }
                 isMusicPlaying.value = false;
-                showToast('提示', '音乐已暂停');
             } else {
                 // 播放音乐
-                if (window.myhkplayer && window.myhkplayer.play) {
+                if (!window.myhkplayer) {
+                    // 创建音乐播放器
+                    const playerScript = document.createElement('script');
+                    playerScript.src = 'https://api.molihua.cc/js/music.min.js';
+                    playerScript.onload = () => {
+                        if (window.myhkplayer && window.myhkplayer.play) {
+                            window.myhkplayer.play();
+                            isMusicPlaying.value = true;
+                        }
+                    };
+                    document.body.appendChild(playerScript);
+                } else if (window.myhkplayer.play) {
                     window.myhkplayer.play();
-                    showToast('提示', '音乐已开始播放');
-                } else {
-                    // 尝试初始化播放器
-                    try {
-                        // 动态创建播放器元素
-                        if (!document.getElementById('music')) {
-                            const musicDiv = document.createElement('div');
-                            musicDiv.id = 'music';
-                            musicDiv.setAttribute('key', '68397e7621e83');
-                            musicDiv.setAttribute('api', 'https://y.cenguigui.cn/');
-                            document.body.appendChild(musicDiv);
-                        }
-                        
-                        // 动态加载播放器脚本
-                        if (!document.getElementById('xplayer')) {
-                            const script = document.createElement('script');
-                            script.id = 'xplayer';
-                            script.src = 'https://y.cenguigui.cn/Static/player14/js/player.js';
-                            script.onload = function() {
-                                // 脚本加载完成后尝试播放
-                                setTimeout(() => {
-                                    if (window.myhkplayer && window.myhkplayer.play) {
-                                        window.myhkplayer.play();
-                                    }
-                                }, 500);
-                            };
-                            document.body.appendChild(script);
-                        }
-                        showToast('提示', '音乐播放器正在准备');
-                    } catch (error) {
-                        showToast('错误', '音乐播放失败');
-                    }
+                    isMusicPlaying.value = true;
                 }
-                isMusicPlaying.value = true;
             }
         };
 
-        // 获取原神一言的方法
+        // 获取原神一言
         const fetchGenshinQuote = async () => {
             isFetchingQuote.value = true;
             try {
@@ -286,7 +261,7 @@ createApp({
         };
 
         // 生命周期钩子
-        onMounted(() => {
+        Vue.onMounted(() => {
             selectedStudents.value = [...students.value];
             // 页面加载时自动获取原神一言
             fetchGenshinQuote();
@@ -322,4 +297,9 @@ createApp({
             fetchGenshinQuote
         };
     }
-}).mount('#app');
+});
+
+// 确保DOM加载完成后再挂载Vue应用
+document.addEventListener('DOMContentLoaded', function() {
+    app.mount('#app');
+});
