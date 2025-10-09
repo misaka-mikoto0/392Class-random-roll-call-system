@@ -98,9 +98,12 @@ $(document).ready(function() {
         // 更新背景图片
         updateBackgroundImage();
         
-        // 启动自动切换（如果还没有启动）
-        if (!autoChangeTimer && document.body.classList.contains('with-background')) {
-            startAutoChange();
+        // 确保启动自动切换（不再检查with-background类，因为updateBackgroundImage会添加该类）
+        if (!autoChangeTimer) {
+            // 稍微延迟启动，确保背景图片已成功设置
+            setTimeout(() => {
+                startAutoChange();
+            }, 1000);
         }
         
         // 立即恢复按钮状态
@@ -109,10 +112,9 @@ $(document).ready(function() {
         }, 500);
     });
     
-    // 页面加载时检查是否已有背景图片
-    $(window).on('load', function() {
-        if (document.body.classList.contains('with-background')) {
-            startAutoChange();
-        }
-    });
+    // 页面加载时不自动设置背景，用户点击按钮后才设置
+$(window).on('load', function() {
+    // 页面加载时不自动设置背景
+    // 背景设置由用户点击切换按钮触发
+});
 });
