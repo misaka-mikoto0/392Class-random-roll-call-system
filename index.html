@@ -32,8 +32,10 @@
         <div class="app-container">
             <!-- Header -->
             <div class="app-header">
-                <h1 class="app-title">392班 · 雅集点名</h1>
-                <p class="app-subtitle">以书卷气，行公平事</p>
+                <div class="title-card">
+                    <h1 class="app-title">392班 · 雅集点名</h1>
+                    <p class="app-subtitle">以书卷气，行公平事</p>
+                </div>
             </div>
             
             <!-- 原神一言展示区域 - 放在内容区域上方 -->
@@ -85,6 +87,35 @@
                                 <span class="slider round"></span>
                             </label>
                             <span class="switch-label">仅抽取前11名</span>
+                        </div>
+                    </div>
+                </div>
+            
+                <!-- 抽取记录卡片 - 移到主内容区域内部 -->
+                <div class="history-card-container">
+                    <div class="sidebar-card">
+                        <div class="card-title">
+                            <i class="mdui-icon material-icons">history</i>
+                            <span>抽取记录</span>
+                        </div>
+                        <div class="history-list">
+                            <div v-if="history.length === 0" class="mdui-text-center mdui-p-y-5 mdui-text-color-black-secondary">
+                                <i class="fas fa-clock fa-2x mdui-m-b-3" style="color: var(--primary-color);"></i>
+                                <p>暂无抽取记录</p>
+                            </div>
+                            <div v-else>
+                                <div v-for="(record, index) in history" :key="index" class="history-item">
+                                    <div class="history-header">
+                                        <div class="history-time"><i class="fas fa-clock mdui-m-r-1"></i>{{ record.time }}</div>
+                                        <span class="history-count">{{ record.count }}人</span>
+                                    </div>
+                                    <div class="history-names">
+                                        <span v-for="(person, pIndex) in record.people" :key="pIndex">
+                                            {{ person.name }}<span v-if="pIndex < record.people.length - 1">, </span>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -159,33 +190,10 @@
                     </ul>
                 </div>
 
-                <!-- History Card -->
-                <div class="sidebar-card">
-                    <div class="card-title">
-                        <i class="mdui-icon material-icons">history</i>
-                        <span>抽取记录</span>
-                    </div>
-                    <div class="history-list">
-                        <div v-if="history.length === 0" class="mdui-text-center mdui-p-y-5 mdui-text-color-black-secondary">
-                            <i class="fas fa-clock fa-2x mdui-m-b-3" style="color: var(--primary-color);"></i>
-                            <p>暂无抽取记录</p>
-                        </div>
-                        <div v-else>
-                            <div v-for="(record, index) in history" :key="index" class="history-item">
-                                <div class="history-header">
-                                    <div class="history-time"><i class="fas fa-clock mdui-m-r-1"></i>{{ record.time }}</div>
-                                    <span class="history-count">{{ record.count }}人</span>
-                                </div>
-                                <div class="history-names">
-                                    <span v-for="(person, pIndex) in record.people" :key="pIndex">
-                                        {{ person.name }}<span v-if="pIndex < record.people.length - 1">, </span>
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+
             </div>
+
+
 
             <!-- Footer -->
             <div class="app-footer">

@@ -7,59 +7,93 @@ $(document).ready(function() {
     // 自动切换间隔（毫秒）
     const AUTO_CHANGE_INTERVAL = 30000; // 30秒
     
+    // 渐变背景的颜色集
+    const gradientSets = [
+        ['#a18cd1', '#fbc2eb'], // 粉紫色系
+        ['#84fab0', '#8fd3f4'], // 青绿色系
+        ['#fccb90', '#d57eeb'], // 橙紫色系
+        ['#ffecd2', '#fcb69f'], // 橙黄色系
+        ['#0093e9', '#80d0c7'], // 蓝绿色系
+        ['#d4fc79', '#96e6a1'], // 黄绿色系
+        ['#e0c3fc', '#8ec5fc'], // 蓝紫色系
+        ['#f093fb', '#f5576c'], // 粉橙色系
+        ['#4facfe', '#00f2fe'], // 亮蓝色系
+        ['#fa709a', '#fee140']  // 粉黄色系
+    ];
+    
+    // 生成随机渐变背景的函数
+    function generateRandomGradient() {
+        // 随机选择一个渐变
+        const randomIndex = Math.floor(Math.random() * gradientSets.length);
+        
+        // 获取渐变颜色
+        const [color1, color2] = gradientSets[randomIndex];
+        
+        // 随机决定渐变方向
+        const direction = Math.floor(Math.random() * 360);
+        
+        // 创建渐变背景
+        return `linear-gradient(${direction}deg, ${color1}, ${color2})`;
+    }
+    
+    // 设置初始动态渐变背景
+    function setInitialGradientBackground() {
+        // 生成渐变背景
+        const gradient = generateRandomGradient();
+        
+        // 设置背景
+        document.body.style.background = gradient;
+        // 如果有with-background类，移除它
+        if (document.body.classList.contains('with-background')) {
+            document.body.classList.remove('with-background');
+        }
+    }
+    
     // 更新背景图片的函数
     function updateBackgroundImage() {
-        $.ajax({
-            url: 'https://v2.xxapi.cn/api/ys',
-            type: 'get',
-            success: function(res) {
-                // 状态码 200 表示请求成功
-                if (res.code === 200 && res.data) {
-                    // 检查是否已使用过此图片
-                    if (usedBackgrounds.includes(res.data)) {
-                        // 如果已使用过，则重新请求
-                        updateBackgroundImage();
-                        return;
-                    }
-                    
-                    console.log('背景图片更新为:', res.data);
-                    // 更新body背景图片
-                    document.body.style.backgroundImage = `url(${res.data})`;
-                    // 添加带背景的类
-                    document.body.classList.add('with-background');
-                    
-                    // 添加到已使用列表
-                    usedBackgrounds.push(res.data);
-                    // 如果列表过长，清理早期的图片
-                    if (usedBackgrounds.length > 20) {
-                        usedBackgrounds.shift();
-                    }
-                    
-                    // 如果是自动切换，不显示提示；如果是手动切换，显示提示
-                    if (!arguments[0] || arguments[0] !== 'auto') {
-                        // 显示成功提示
-                        const toast = document.createElement('div');
-                        toast.className = 'toast';
-                        toast.innerHTML = '<strong>成功</strong><span>背景图片已更新</span>';
-                        document.querySelector('.toast-container').appendChild(toast);
-                        toast.style.display = 'block';
-                        
-                        // 3秒后移除提示
-                        setTimeout(() => {
-                            toast.style.display = 'none';
-                            setTimeout(() => {
-                                toast.remove();
-                            }, 300);
-                        }, 3000);
-                    }
-                } else {
-                    console.error('获取背景图片失败', res);
-                }
-            },
-            error: function() {
-                console.error('获取背景图片网络错误');
+        // 创建一个临时图片对象来处理重定向
+        const img = new Image();
+        const timestamp = new Date().getTime(); // 添加时间戳防止缓存
+        const url = `https://t.alcy.cc/ys?${timestamp}`;
+        
+        img.onload = function() {
+            // 图片加载成功后更新背景
+            document.body.style.backgroundImage = `url(${url})`;
+            // 添加带背景的类
+            document.body.classList.add('with-background');
+                       
+            // 添加到已使用列表
+            usedBackgrounds.push(url);
+            // 如果列表过长，清理早期的图片
+            if (usedBackgrounds.length > 20) {
+                usedBackgrounds.shift();
             }
-        });
+            
+            // 如果是自动切换，不显示提示；如果是手动切换，显示提示
+            if (!arguments[0] || arguments[0] !== 'auto') {
+                // 显示成功提示
+                const toast = document.createElement('div');
+                toast.className = 'toast';
+                toast.innerHTML = '<strong>成功</strong><span>背景图片已更新</span>';
+                document.querySelector('.toast-container').appendChild(toast);
+                toast.style.display = 'block';
+                
+                // 3秒后移除提示
+                setTimeout(() => {
+                    toast.style.display = 'none';
+                    setTimeout(() => {
+                        toast.remove();
+                    }, 300);
+                }, 3000);
+            }
+        };
+        
+        img.onerror = function() {
+            console.error('获取背景图片失败');
+        };
+        
+        // 设置图片源，触发加载
+        img.src = url;
     }
     
     // 开始自动切换背景
@@ -112,9 +146,9 @@ $(document).ready(function() {
         }, 500);
     });
     
-    // 页面加载时不自动设置背景，用户点击按钮后才设置
+    // 页面加载时设置初始渐变背景
 $(window).on('load', function() {
-    // 页面加载时不自动设置背景
-    // 背景设置由用户点击切换按钮触发
+    // 设置初始渐变背景
+    setInitialGradientBackground();
 });
 });

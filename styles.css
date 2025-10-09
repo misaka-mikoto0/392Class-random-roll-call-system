@@ -69,22 +69,47 @@ body.with-background::before {
     display: flex;
     flex-direction: column;
     padding: 20px;
-    gap: 20px;
+    gap: 24px;
     min-height: 100vh;
 }
 
 .content-wrapper {
     display: grid;
     grid-template-columns: 1fr 300px;
-    gap: 20px;
+    gap: 24px;
     width: 100%;
     align-items: start;
+}
+
+/* 历史记录卡片容器 */
+.history-card-container {
+    width: 100%;
+}
+
+/* 历史记录卡片容器内的侧边栏卡片不需要额外样式，使用默认的sidebar-card样式 */
+
+/* 调整响应式布局 */
+@media (max-width: 1024px) {
+    .content-wrapper {
+        grid-template-columns: 1fr;
+    }
 }
 
 .app-header {
     text-align: center;
     margin-bottom: 24px;
     padding: 16px 0;
+}
+
+/* 标题卡片背景 */
+.title-card {
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow);
+    padding: 24px 32px;
+    display: inline-block;
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border-color);
 }
 
 .app-title {
@@ -122,6 +147,7 @@ body.with-background::before {
     backdrop-filter: blur(10px);
     overflow: hidden;
     grid-column: 1 / -1;
+    opacity: 0.8; /* 降低一言卡片不透明度 */
 }
 
 .genshin-quote::before {
@@ -184,6 +210,7 @@ body.with-background::before {
     padding: 32px;
     display: flex;
     flex-direction: column;
+    opacity: 0.8; /* 降低主内容卡片不透明度 */
     align-items: center;
     justify-content: center;
     min-height: 320px;
@@ -558,6 +585,7 @@ body.with-background::before {
     border: 1px solid var(--border-color);
     position: relative;
     overflow: hidden;
+    opacity: 0.8; /* 降低侧边栏卡片不透明度 */
 }
 
 .sidebar-card::before {
@@ -612,6 +640,7 @@ body.with-background::before {
     transition: var(--transition);
     position: relative;
     overflow: hidden;
+    opacity: 0.8; /* 降低统计卡片不透明度 */
 }
 
 .stat-card::before {
