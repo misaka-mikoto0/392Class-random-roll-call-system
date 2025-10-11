@@ -8,7 +8,7 @@ const app = Vue.createApp({
             { id: 1, name: '王铖浩', rank: 1, probability: 1 },
             { id: 2, name: '原梓杰', rank: 2, probability: 1 },
             { id: 3, name: '茹柯臻', rank: 3, probability: 1 },
-            { id: 4, name: '胡逸柯', rank: 4, probability: 1 },
+            { id: 4, name: '胡逸柯', rank: 4, probability: 0.9 },
             { id: 5, name: '刘艺博', rank: 5, probability: 1 },
             { id: 6, name: '冯炜杰', rank: 6, probability: 1 },
             { id: 7, name: '李梦雨', rank: 7, probability: 1 },
