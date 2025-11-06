@@ -89,18 +89,11 @@ document.addEventListener('DOMContentLoaded', function() {
         toastContainer: document.getElementById('toast-container')
     };
     
+    
+    
     // 函数声明将在后续代码中定义
     
-    // 背景切换按钮
-    const changeBackgroundBtn = document.getElementById('changeBackgroundBtn');
-    if (changeBackgroundBtn) {
-        changeBackgroundBtn.addEventListener('click', function() {
-            // 假设background.js中定义了changeBackground函数
-            if (typeof changeBackground === 'function') {
-                changeBackground();
-            }
-        });
-    }
+    // 背景切换按钮 - 由background.js处理，这里不再重复绑定
     
     // 计算属性函数
     const calculateParticipationPercentage = () => {
@@ -392,8 +385,7 @@ document.addEventListener('DOMContentLoaded', function() {
     elements.selectStudentsBtn.addEventListener('click', showStudentSelectionDialog);
     elements.startDrawBtn.addEventListener('click', startDrawing);
     elements.musicToggleBtn.addEventListener('click', toggleMusic);
-});
-
+    
     // 获取原神一言
     const fetchGenshinQuote = async () => {
         try {
@@ -1248,3 +1240,4 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log(`${title}: ${message}`);
         }
     }
+});
