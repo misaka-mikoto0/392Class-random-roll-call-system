@@ -3,59 +3,103 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="392班公平随机点名系统 - 以书卷气，行公平事">
+    <meta name="theme-color" content="#6366f1">
     <title>392班 · 雅集点名</title>
     <!-- 引入外部样式文件 -->
     <link rel="stylesheet" href="styles.css">
     <!-- MDUI CSS -->
     <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/mdui/2.1.4/mdui.min.css">
     <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.staticfile.net/font-awesome/6.4.0/css/all.min.css">
+    <!-- 引入外部JavaScript库 -->
+    <script src="https://cdn.bootcdn.net/ajax/libs/mdui/2.1.4/mdui.global.js"></script>
+    <!-- jQuery -->
+    <script src="https://cdn.staticfile.net/jquery/3.5.1/jquery.min.js"></script>
+    <!-- 背景切换功能 -->
+    <script src="background.js"></script>
+    <!-- 引入外部JavaScript文件 - 移至body底部以提高加载性能 -->
 </head>
 <body>
     <div id="app">
         <div class="app-container">
             <!-- Header -->
             <div class="app-header">
-                <h1 class="app-title">392班 · 雅集点名</h1>
-                <p class="app-subtitle">以书卷气，行公平事</p>
+                <div class="title-card">
+                    <h1 class="app-title">392班 · 雅集点名</h1>
+                    <p class="app-subtitle">以书卷气，行公平事</p>
+                </div>
             </div>
-
-            <!-- Main Content Area -->
-            <div class="main-content">
+            
+            <!-- 原神一言展示区域 - 放在内容区域上方 -->
+            <div class="genshin-quote full-width">
+                <div class="quote-content" id="quote-content">正在加载一言...</div>
+                <div class="quote-author" id="quote-author">— 原神</div>
+            </div>
+            
+            <!-- 内容区域容器 -->
+            <div class="content-wrapper optimized">
+                <!-- Main Content Area -->
+                <div class="main-content">
                 <div class="result-display">
-                    <div v-if="!currentResult.length" class="placeholder-text">
-                        <i class="fas fa-hand-point-up fa-3x mdui-m-b-4" style="color: var(--primary-color);"></i>
+                    <div id="placeholder-text" class="placeholder-text">
+                        <i class="fas fa-random fa-4x mdui-m-b-4" style="color: var(--primary-color);"></i>
                         <p>点击下方按钮开始抽取</p>
                         <p class="mdui-text-color-black-secondary mdui-m-t-2">系统将公平随机选择学生</p>
                     </div>
-                    <div v-else>
+                    <div id="result-container" style="display: none;">
                         <div class="result-title">抽取结果</div>
-                        <div class="result-names">
-                            <span v-for="(student, index) in currentResult" :key="index" class="result-badge">
-                                {{ student.name }}
-                            </span>
-                        </div>
+                        <div class="result-names" id="result-names"></div>
                     </div>
                 </div>
 
                 <div class="controls">
-                    <button class="mdui-btn mdui-color-indigo mdui-ripple" @click="showModal = true">
-                        <i class="mdui-icon material-icons mdui-m-r-1">people</i>
-                        选择学生
-                    </button>
-                    <div class="input-group">
-                        <i class="fas fa-user-plus"></i>
-                        <input type="number" v-model.number="drawCount" placeholder="抽取人数" min="1">
+                    <div class="primary-controls">
+                        <button class="mdui-btn mdui-color-indigo mdui-ripple select-students-btn" id="selectStudentsBtn">
+                            <i class="mdui-icon material-icons mdui-m-r-1">people</i>
+                            选择学生
+                        </button>
+                        <div class="input-group">
+                            <i class="fas fa-user-plus"></i>
+                            <input type="number" id="drawCount" placeholder="抽取人数" min="1" value="1">
+                        </div>
+                        <button class="mdui-btn mdui-color-green mdui-ripple start-draw-btn" id="startDrawBtn">
+                            <i class="mdui-icon material-icons mdui-m-r-1">autorenew</i>
+                            <span id="drawBtnText">开始抽取</span>
+                        </button>
                     </div>
-                    <button class="mdui-btn mdui-color-green mdui-ripple" @click="startDrawing" :disabled="isRolling">
-                        <i class="mdui-icon material-icons mdui-m-r-1">autorenew</i>
-                        {{ isRolling ? '抽取中...' : '开始抽取' }}
-                    </button>
+
+                    <div class="control-switches">
+                        <div class="switch-item">
+                            <label class="switch">
+                                <input type="checkbox" id="onlyTop11">
+                                <span class="slider round"></span>
+                            </label>
+                            <span class="switch-label">仅抽取前11名</span>
+                        </div>
+                    </div>
+                </div>
+            
+                <!-- 抽取记录卡片 - 移到主内容区域内部 -->
+                <div class="history-card-container">
+                    <div class="sidebar-card">
+                        <div class="card-title">
+                            <i class="mdui-icon material-icons">history</i>
+                            <span>抽取记录</span>
+                        </div>
+                        <div class="history-list" id="history-list">
+                            <div id="no-history" class="mdui-text-center mdui-p-y-5 mdui-text-color-black-secondary">
+                                <i class="fas fa-clock fa-2x mdui-m-b-3" style="color: var(--primary-color);"></i>
+                                <p>暂无抽取记录</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-
-            <!-- Sidebar -->
-            <div class="sidebar">
+            
+                <!-- Sidebar -->
+                <div class="sidebar">
+                
                 <!-- Stats Card -->
                 <div class="sidebar-card">
                     <div class="card-title">
@@ -64,29 +108,29 @@
                     </div>
                     <div class="stats-grid">
                         <div class="stat-card">
-                            <div class="stat-value">{{ students.length }}</div>
+                            <div class="stat-value" id="total-students">0</div>
                             <div class="stat-label">学生总数</div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-value">{{ selectedStudents.length }}</div>
+                            <div class="stat-value" id="selected-students">0</div>
                             <div class="stat-label">参与抽取</div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-value">{{ totalDraws }}</div>
+                            <div class="stat-value" id="total-draws">0</div>
                             <div class="stat-label">总抽取次数</div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-value">{{ history.length > 0 ? history[0].count : 0 }}</div>
+                            <div class="stat-value" id="current-draw-count">0</div>
                             <div class="stat-label">本次抽取</div>
                         </div>
                     </div>
                     <div class="progress-container">
                         <div class="progress-label">
                             <span>学生参与比例</span>
-                            <span>{{ Math.round(participationPercentage) }}%</span>
+                            <span id="participation-percentage">0%</span>
                         </div>
                         <div class="progress-bar">
-                            <div class="progress-fill" :style="{ width: participationPercentage + '%' }"></div>
+                            <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
                         </div>
                     </div>
                 </div>
@@ -121,89 +165,32 @@
                         </li>
                     </ul>
                 </div>
-
-                <!-- History Card -->
-                <div class="sidebar-card">
-                    <div class="card-title">
-                        <i class="mdui-icon material-icons">history</i>
-                        <span>抽取记录</span>
-                    </div>
-                    <div class="history-list">
-                        <div v-if="history.length === 0" class="mdui-text-center mdui-p-y-5 mdui-text-color-black-secondary">
-                            <i class="fas fa-clock fa-2x mdui-m-b-3" style="color: var(--primary-color);"></i>
-                            <p>暂无抽取记录</p>
-                        </div>
-                        <div v-else>
-                            <div v-for="(record, index) in history" :key="index" class="history-item">
-                                <div class="history-header">
-                                    <div class="history-time"><i class="fas fa-clock mdui-m-r-1"></i>{{ record.time }}</div>
-                                    <span class="history-count">{{ record.count }}人</span>
-                                </div>
-                                <div class="history-names">
-                                    <span v-for="(person, pIndex) in record.people" :key="pIndex">
-                                        {{ person.name }}<span v-if="pIndex < record.people.length - 1">, </span>
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
 
             <!-- Footer -->
-            <div class="app-footer">
+            <footer class="app-footer">
                 <p>随机点名系统 &copy; 2023 392班 | 公平公正的随机算法</p>
-                <p>已抽取 {{ totalDraws }} 次 | 服务 {{ students.length }} 名学生</p>
-            </div>
+                <p><span id="footer-draw-count">已抽取 0 次</span> | <span id="footer-student-count">服务 0 名学生</span></p>
+            </footer>
         </div>
 
-        <!-- Student Selection Modal -->
-        <div class="mdui-dialog" :class="{ 'mdui-dialog-open': showModal }">
-            <div class="modal-header">
-                <h3><i class="mdui-icon material-icons mdui-m-r-2">person_add</i>选择参与学生</h3>
-                <button class="mdui-btn mdui-btn-icon mdui-ripple" @click="showModal = false">
-                    <i class="mdui-icon material-icons">close</i>
-                </button>
-            </div>
-            <div class="modal-body">
-                <div v-if="students.length === 0" class="mdui-text-center mdui-p-y-5 mdui-text-color-black-secondary">
-                    没有可用的学生数据
-                </div>
-                <div v-else class="person-list">
-                    <div v-for="student in students" :key="student.id"
-                         class="person-item" :class="{ 'selected': isSelected(student) }"
-                         @click="toggleStudentSelection(student)">
-                        <div class="person-avatar">{{ student.name.charAt(0) }}</div>
-                        <div class="person-info">
-                            <div class="person-name">{{ student.name }}</div>
-                            <div class="person-rank">排名: {{ student.rank }}</div>
-                        </div>
-                        <div class="mdui-checkbox">
-                            <input type="checkbox" :checked="isSelected(student)" />
-                            <i class="mdui-checkbox-icon"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-actions">
-                <button class="mdui-btn mdui-ripple" @click="showModal = false">取消</button>
-                <button class="mdui-btn mdui-btn-raised mdui-ripple mdui-color-indigo" @click="confirmSelection">确认选择</button>
-            </div>
-        </div>
-
-        <!-- Toast Notification -->
-        <div class="toast-container">
-            <div v-if="toast.show" class="toast">
-                <strong>{{ toast.title }}</strong>
-                <span>{{ toast.message }}</span>
-            </div>
+        <!-- Toast Notification Container - 适配动态创建的Toast -->
+        <div id="toast-container" class="toast-container">
+            <!-- 这里将由JavaScript动态创建Toast元素 -->
         </div>
     </div>
 
-    <!-- 引入外部JavaScript库 -->
-    <script src="https://cdn.bootcdn.net/ajax/libs/mdui/2.1.4/mdui.global.js"></script>
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <!-- 引入外部JavaScript文件 -->
+    <!-- 浮动控制按钮组 -->
+    <div class="floating-controls">
+        <button id="musicToggleBtn" class="floating-btn music-btn" title="播放音乐">
+            <i id="musicIcon" class="fas fa-music"></i>
+        </button>
+        <button id="changeBackgroundBtn" class="floating-btn background-btn" title="切换背景">
+            <i class="fas fa-image"></i>
+        </button>
+    </div>
+    
+    <!-- 引入主要JavaScript文件 - 移至底部以提高加载性能 -->
     <script src="script.js"></script>
-</body>
+  </body>
 </html>
