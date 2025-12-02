@@ -1,31 +1,9 @@
-<!-- Vue应用主文件 -->
-<script>
-// 简单的种子随机数生成器（线性同余法）
-let seed = 12345; // 默认种子，可修改为用户输入或时间戳等
-const seededRandom = () => {
-    seed = (seed * 1664525 + 1013904223) % Math.pow(2, 32);
-    return seed / Math.pow(2, 32);
-};
+// Vue应用主文件
 
-const seededShuffle = (array, seedVal = seed) => {
-    // 临时使用指定种子生成随机序列
-    let tempSeed = seedVal;
-    const rand = () => {
-        tempSeed = (tempSeed * 1664525 + 1013904223) % Math.pow(2, 32);
-        return tempSeed / Math.pow(2, 32);
-    };
-
-    const newArray = [...array];
-    for (let i = newArray.length - 1; i > 0; i--) {
-        const j = Math.floor(rand() * (i + 1));
-        [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
-    }
-    return newArray;
-};
-
+// 创建Vue应用实例
 const app = Vue.createApp({
     setup() {
-        // 学生数据（保持不变）
+        // 学生数据
         const students = Vue.ref([
             { id: 1, name: '王铖浩', rank: 1, probability: 1 },
             { id: 2, name: '原梓杰', rank: 2, probability: 1 },
@@ -72,20 +50,7 @@ const app = Vue.createApp({
             { id: 44, name: '王沐勋', rank: 44, probability: 1 }
         ]);
 
-        // ===== 新增：状态管理增强 =====
-        const currentSeed = Vue.ref(12345); // 可由用户输入或固定
-        const remainingPool = Vue.ref([]); // 剩余可抽（用于无重复阶段）
-        const usedPool = Vue.ref([]);      // 已抽学生（用于记录）
-
-        // 重置抽取状态（清空已抽、重置剩余池）
-        const resetState = () => {
-            remainingPool.value = [...selectedStudents.value];
-            usedPool.value = [];
-            // 重置随机种子（确保复现性）
-            seed = currentSeed.value;
-        };
-
-        // 状态管理（原有部分，仅补充）
+        // 状态管理
         const selectedStudents = Vue.ref([]);
         const history = Vue.ref([]);
         const totalDraws = Vue.ref(0);
@@ -129,19 +94,27 @@ const app = Vue.createApp({
             selectedStudents.value = [];
         };
 
-        // 确认学生选择（重置抽取池）
+        // 确认学生选择
         const confirmSelection = () => {
             if (selectedStudents.value.length === 0) {
                 showToast('提示', '请至少选择一名学生');
                 return;
             }
-            // 重置状态：清空已抽，剩余池 = 当前选中的学生
-            resetState();
             showModal.value = false;
             showToast('成功', '学生选择已确认');
         };
 
-        // 开始抽取（核心修改）
+        // Fisher-Yates 洗牌算法
+        const shuffleArray = (array) => {
+            const newArray = [...array];
+            for (let i = newArray.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+            }
+            return newArray;
+        };
+
+        // 开始抽取
         const startDrawing = () => {
             if (selectedStudents.value.length === 0) {
                 showToast('提示', '请先选择参与抽取的学生');
@@ -150,7 +123,7 @@ const app = Vue.createApp({
 
             if (isRolling.value) return;
 
-            // 根据onlyTop11过滤可选学生
+            // 根据onlyTop11过滤学生
             let eligibleStudents = [...selectedStudents.value];
             if (onlyTop11.value) {
                 eligibleStudents = eligibleStudents.filter(s => s.rank <= 11);
@@ -160,78 +133,52 @@ const app = Vue.createApp({
                 }
             }
 
-            // 更新剩余池为 eligibleStudents（仅首次或重置后）
-            if (remainingPool.value.length === 0 || remainingPool.value.length !== eligibleStudents.length) {
-                // 若已抽过但剩余池为空/不匹配，说明需要重置（如切换了onlyTop11）
-                remainingPool.value = [...eligibleStudents];
-                usedPool.value = [];
-            }
-
-            const maxUniqueCount = Math.floor(eligibleStudents.length * 0.8);
+            // 检查抽取人数是否合理
             const count = Math.min(Math.max(1, drawCount.value), eligibleStudents.length);
             drawCount.value = count;
 
             isRolling.value = true;
             currentResult.value = [];
 
-            // ===== 动画阶段：仍用 Math.random() 保证视觉随机 =====
-            const animationDuration = 1000;
-            const frameDuration = 50;
+            // 动画效果
+            const animationDuration = 1000; // 动画持续时间（毫秒）
+            const frameDuration = 50; // 每帧持续时间（毫秒）
             const frameCount = animationDuration / frameDuration;
             let currentFrame = 0;
 
             const animateRolling = () => {
                 if (currentFrame < frameCount) {
+                    // 随机显示一个学生
                     const randomIndex = Math.floor(Math.random() * eligibleStudents.length);
                     currentResult.value = [eligibleStudents[randomIndex]];
                     currentFrame++;
                     setTimeout(animateRolling, frameDuration);
                 } else {
-                    // ===== 真实结果：按种子抽取，保证可复现 =====
-                    let finalResult = [];
-
-                    // 情况1：还有足够剩余学生（未到80%），从 remainingPool 中抽且移除
-                    if (remainingPool.value.length >= count && usedPool.value.length < maxUniqueCount) {
-                        // 随机打乱剩余池（使用种子）
-                        const shuffledRemaining = seededShuffle(remainingPool.value, currentSeed.value);
-                        finalResult = shuffledRemaining.slice(0, count);
-                        // 更新剩余池和已抽池
-                        remainingPool.value = shuffledRemaining.slice(count);
-                        usedPool.value.push(...finalResult);
-                    } 
-                    // 情况2：剩余不足 or 已超80%，允许重复 → 使用完整 eligibleStudents + 种子随机抽
-                    else {
-                        // 从完整 eligibleStudents 中按种子随机抽（可重复）
-                        const results = [];
-                        for (let i = 0; i < count; i++) {
-                            const idx = Math.floor(seededRandom() * eligibleStudents.length);
-                            results.push(eligibleStudents[idx]);
-                        }
-                        finalResult = results;
-                    }
-
-                    currentResult.value = finalResult;
-
-                    // 更新历史（含种子，用于复现）
+                    // 最终结果
+                    const shuffled = shuffleArray(eligibleStudents);
+                    currentResult.value = shuffled.slice(0, count);
+                    
+                    // 更新历史记录
                     totalDraws.value++;
                     const now = new Date();
                     const timeString = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
                     history.value.unshift({
                         time: timeString,
                         count: count,
-                        people: [...finalResult], // 深拷贝
-                        seedUsed: currentSeed.value // ✅ 关键：记录种子！
+                        people: currentResult.value
                     });
-
+                    
+                    // 保留最近10条记录
                     if (history.value.length > 10) {
                         history.value.pop();
                     }
-
+                    
                     isRolling.value = false;
                     showToast('成功', `已抽取${count}名学生`);
                 }
             };
 
+            // 开始动画
             animateRolling();
         };
 
@@ -243,15 +190,18 @@ const app = Vue.createApp({
             }, 3000);
         };
 
-        // 切换音乐播放状态（不变）
+        // 切换音乐播放状态
         const toggleMusic = () => {
             if (isMusicPlaying.value) {
+                // 暂停音乐
                 if (window.myhkplayer && window.myhkplayer.pause) {
                     window.myhkplayer.pause();
                 }
                 isMusicPlaying.value = false;
             } else {
+                // 播放音乐
                 if (!window.myhkplayer) {
+                    // 创建音乐播放器
                     const playerScript = document.createElement('script');
                     playerScript.src = 'https://api.molihua.cc/js/music.min.js';
                     playerScript.onload = () => {
@@ -268,30 +218,42 @@ const app = Vue.createApp({
             }
         };
 
-        // 获取原神一言（不变）
+        // 获取原神一言
         const fetchGenshinQuote = async () => {
             isFetchingQuote.value = true;
             try {
                 const response = await fetch('https://gd.moyanjdc.top/api/yiyan');
-                if (!response.ok) throw new Error('网络请求失败');
+                if (!response.ok) {
+                    throw new Error('网络请求失败');
+                }
                 const data = await response.json();
                 quote.value = {
                     content: data.content || '人生如逆旅，我亦是行人',
                     author: data.author || '原神'
                 };
+                // 保存到本地存储，以便下次访问时使用
                 localStorage.setItem('genshinQuote', JSON.stringify(quote.value));
             } catch (error) {
                 console.error('获取原神一言失败:', error);
                 showToast('提示', '获取一言失败，显示默认内容');
+                // 如果失败，尝试使用本地存储中的数据
                 const savedQuote = localStorage.getItem('genshinQuote');
                 if (savedQuote) {
                     try {
                         quote.value = JSON.parse(savedQuote);
                     } catch (e) {
-                        quote.value = { content: '人生如逆旅，我亦是行人', author: '原神' };
+                        // 本地存储数据无效
+                        quote.value = {
+                            content: '人生如逆旅，我亦是行人',
+                            author: '原神'
+                        };
                     }
                 } else {
-                    quote.value = { content: '人生如逆旅，我亦是行人', author: '原神' };
+                    // 设置默认值
+                    quote.value = {
+                        content: '人生如逆旅，我亦是行人',
+                        author: '原神'
+                    };
                 }
             } finally {
                 isFetchingQuote.value = false;
@@ -301,12 +263,14 @@ const app = Vue.createApp({
         // 生命周期钩子
         Vue.onMounted(() => {
             selectedStudents.value = [...students.value];
-            resetState(); // 初始化剩余池
+            // 页面加载时自动获取原神一言
             fetchGenshinQuote();
+            
+            // 设置定时器，每30秒自动刷新一次原神一言
             setInterval(fetchGenshinQuote, 30000);
         });
 
-        // 暴露
+        // 暴露给模板使用的变量和方法
         return {
             students,
             selectedStudents,
@@ -330,15 +294,12 @@ const app = Vue.createApp({
             toggleMusic,
             quote,
             isFetchingQuote,
-            fetchGenshinQuote,
-            currentSeed, // 暴露种子（可用于输入框绑定）
-            resetState   // 暴露重置（可用于“重新开始”按钮）
+            fetchGenshinQuote
         };
     }
 });
 
-// 挂载
+// 确保DOM加载完成后再挂载Vue应用
 document.addEventListener('DOMContentLoaded', function() {
     app.mount('#app');
 });
-</script>
