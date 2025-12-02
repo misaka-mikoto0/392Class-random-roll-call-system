@@ -1,5 +1,29 @@
 // Vue应用主文件
 
+// 可复现的伪随机数生成器 (使用种子)
+class SeededRandom {
+    constructor(seed = Date.now()) {
+        this.seed = seed % 2147483647;
+        if (this.seed <= 0) this.seed += 2147483646;
+    }
+
+    // 生成0-1之间的随机数
+    next() {
+        this.seed = (this.seed * 16807) % 2147483647;
+        return (this.seed - 1) / 2147483646;
+    }
+
+    // 生成min到max之间的整数
+    nextInt(min, max) {
+        return Math.floor(min + this.next() * (max - min + 1));
+    }
+
+    // 生成min到max之间的浮点数
+    nextFloat(min, max) {
+        return min + this.next() * (max - min);
+    }
+}
+
 // 创建Vue应用实例
 const app = Vue.createApp({
     setup() {
@@ -63,11 +87,36 @@ const app = Vue.createApp({
         const onlyTop11 = Vue.ref(false);
         const quote = Vue.ref({ content: '', author: '' });
         const isFetchingQuote = Vue.ref(false);
+        
+        // 新增：重复控制相关状态
+        const repeatControlSeed = Vue.ref(Date.now()); // 随机种子（默认使用当前时间戳）
+        const studentDrawCounts = Vue.ref({}); // 记录每个学生被抽中的次数
+        const cycleResetCounter = Vue.ref(0); // 当前轮次抽取次数
+        const maxDrawsBeforeReset = Vue.ref(0); // 重置前最大抽取次数（学生总数的0.8）
 
         // 计算属性
         const participationPercentage = Vue.computed(() => {
             return students.value.length > 0 ? (selectedStudents.value.length / students.value.length) * 100 : 0;
         });
+
+        // 计算最大抽取次数（学生总数的0.8）
+        const calculateMaxDraws = () => {
+            const totalStudents = selectedStudents.value.length;
+            maxDrawsBeforeReset.value = Math.floor(totalStudents * 0.8);
+            return maxDrawsBeforeReset.value;
+        };
+
+        // 检查是否需要进行重置
+        const needsReset = () => {
+            return cycleResetCounter.value >= maxDrawsBeforeReset.value;
+        };
+
+        // 重置抽取记录
+        const resetDrawRecords = () => {
+            studentDrawCounts.value = {};
+            cycleResetCounter.value = 0;
+            showToast('系统', '已重置学生抽取记录，开始新一轮抽取');
+        };
 
         // 切换学生选择状态
         const toggleStudentSelection = (student) => {
@@ -77,6 +126,8 @@ const app = Vue.createApp({
             } else {
                 selectedStudents.value.push(student);
             }
+            // 重新计算最大抽取次数
+            calculateMaxDraws();
         };
 
         // 检查学生是否已选择
@@ -87,11 +138,13 @@ const app = Vue.createApp({
         // 选择所有学生
         const selectAllStudents = () => {
             selectedStudents.value = [...students.value];
+            calculateMaxDraws();
         };
 
         // 取消选择所有学生
         const deselectAllStudents = () => {
             selectedStudents.value = [];
+            calculateMaxDraws();
         };
 
         // 确认学生选择
@@ -101,17 +154,69 @@ const app = Vue.createApp({
                 return;
             }
             showModal.value = false;
+            calculateMaxDraws(); // 重新计算最大抽取次数
             showToast('成功', '学生选择已确认');
         };
 
-        // Fisher-Yates 洗牌算法
-        const shuffleArray = (array) => {
+        // 可复现的 Fisher-Yates 洗牌算法
+        const seededShuffleArray = (array, seed) => {
+            const random = new SeededRandom(seed);
             const newArray = [...array];
             for (let i = newArray.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
+                const j = random.nextInt(0, i);
                 [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
             }
             return newArray;
+        };
+
+        // 加权随机选择（考虑概率和学生已抽取次数）
+        const weightedRandomSelection = (candidates, count, seed) => {
+            const random = new SeededRandom(seed);
+            const selected = [];
+            const availableCandidates = [...candidates];
+            
+            // 计算每个候选人的权重
+            const calculateWeight = (student) => {
+                const baseWeight = student.probability || 1;
+                const drawCount = studentDrawCounts.value[student.id] || 0;
+                
+                // 已被抽取次数越多，权重越低
+                // 如果学生已经被抽取过，降低其权重
+                const penalty = drawCount > 0 ? 0.3 : 1;
+                
+                return baseWeight * penalty;
+            };
+            
+            for (let i = 0; i < count && availableCandidates.length > 0; i++) {
+                // 计算总权重
+                let totalWeight = 0;
+                const weights = availableCandidates.map(student => {
+                    const weight = calculateWeight(student);
+                    totalWeight += weight;
+                    return weight;
+                });
+                
+                // 生成随机数并选择
+                const randomValue = random.nextFloat(0, totalWeight);
+                let cumulativeWeight = 0;
+                let selectedIndex = 0;
+                
+                for (let j = 0; j < availableCandidates.length; j++) {
+                    cumulativeWeight += weights[j];
+                    if (randomValue <= cumulativeWeight) {
+                        selectedIndex = j;
+                        break;
+                    }
+                }
+                
+                const selectedStudent = availableCandidates[selectedIndex];
+                selected.push(selectedStudent);
+                
+                // 从候选列表中移除已选学生
+                availableCandidates.splice(selectedIndex, 1);
+            }
+            
+            return selected;
         };
 
         // 开始抽取
@@ -122,6 +227,11 @@ const app = Vue.createApp({
             }
 
             if (isRolling.value) return;
+
+            // 检查是否需要重置
+            if (needsReset()) {
+                resetDrawRecords();
+            }
 
             // 根据onlyTop11过滤学生
             let eligibleStudents = [...selectedStudents.value];
@@ -140,6 +250,9 @@ const app = Vue.createApp({
             isRolling.value = true;
             currentResult.value = [];
 
+            // 使用时间戳和随机种子创建本次抽取的唯一种子
+            const drawSeed = repeatControlSeed.value + totalDraws.value + Date.now();
+            
             // 动画效果
             const animationDuration = 1000; // 动画持续时间（毫秒）
             const frameDuration = 50; // 每帧持续时间（毫秒）
@@ -148,38 +261,107 @@ const app = Vue.createApp({
 
             const animateRolling = () => {
                 if (currentFrame < frameCount) {
-                    // 随机显示一个学生
-                    const randomIndex = Math.floor(Math.random() * eligibleStudents.length);
+                    // 随机显示一个学生（使用临时种子）
+                    const tempSeed = drawSeed + currentFrame;
+                    const tempRandom = new SeededRandom(tempSeed);
+                    const randomIndex = tempRandom.nextInt(0, eligibleStudents.length - 1);
                     currentResult.value = [eligibleStudents[randomIndex]];
                     currentFrame++;
                     setTimeout(animateRolling, frameDuration);
                 } else {
-                    // 最终结果
-                    const shuffled = shuffleArray(eligibleStudents);
-                    currentResult.value = shuffled.slice(0, count);
+                    // 最终结果 - 使用可复现的加权随机选择
+                    const finalResult = weightedRandomSelection(eligibleStudents, count, drawSeed);
+                    currentResult.value = finalResult;
+                    
+                    // 更新学生抽取次数
+                    finalResult.forEach(student => {
+                        if (!studentDrawCounts.value[student.id]) {
+                            studentDrawCounts.value[student.id] = 0;
+                        }
+                        studentDrawCounts.value[student.id]++;
+                    });
+                    
+                    // 更新抽取轮次计数器
+                    cycleResetCounter.value++;
                     
                     // 更新历史记录
                     totalDraws.value++;
                     const now = new Date();
                     const timeString = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+                    const dateString = `${now.getFullYear()}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getDate().toString().padStart(2, '0')}`;
+                    
                     history.value.unshift({
                         time: timeString,
+                        date: dateString,
                         count: count,
-                        people: currentResult.value
+                        people: [...finalResult],
+                        seed: drawSeed, // 记录种子以便复现
+                        cycle: cycleResetCounter.value,
+                        maxCycle: maxDrawsBeforeReset.value
                     });
                     
-                    // 保留最近10条记录
-                    if (history.value.length > 10) {
+                    // 保留最近20条记录
+                    if (history.value.length > 20) {
                         history.value.pop();
                     }
                     
                     isRolling.value = false;
-                    showToast('成功', `已抽取${count}名学生`);
+                    showToast('成功', `已抽取${count}名学生（本轮第${cycleResetCounter.value}/${maxDrawsBeforeReset.value}次）`);
+                    
+                    // 如果达到最大抽取次数，提示即将重置
+                    if (cycleResetCounter.value >= maxDrawsBeforeReset.value) {
+                        setTimeout(() => {
+                            showToast('提示', '已达到最大抽取次数，下次抽取将重置记录');
+                        }, 1000);
+                    }
                 }
             };
 
             // 开始动画
             animateRolling();
+        };
+
+        // 复现历史记录中的抽取结果
+        const replayHistoryDraw = (historyItem) => {
+            if (!historyItem.seed) {
+                showToast('错误', '此历史记录无法复现');
+                return;
+            }
+            
+            // 根据onlyTop11过滤学生
+            let eligibleStudents = [...selectedStudents.value];
+            if (onlyTop11.value) {
+                eligibleStudents = eligibleStudents.filter(s => s.rank <= 11);
+                if (eligibleStudents.length === 0) {
+                    showToast('提示', '当前选择的学生中没有前11名学生');
+                    return;
+                }
+            }
+            
+            // 使用相同的种子复现结果
+            const recreatedResult = weightedRandomSelection(eligibleStudents, historyItem.count, historyItem.seed);
+            
+            // 显示复现结果
+            showModal.value = true;
+            currentResult.value = recreatedResult;
+            
+            showToast('成功', `已复现历史抽取结果（${historyItem.time}）`);
+        };
+
+        // 设置随机种子
+        const setRandomSeed = () => {
+            const newSeed = prompt('请输入随机种子（数字）:', repeatControlSeed.value);
+            if (newSeed !== null && !isNaN(newSeed)) {
+                repeatControlSeed.value = parseInt(newSeed);
+                showToast('成功', `随机种子已设置为: ${repeatControlSeed.value}`);
+            }
+        };
+
+        // 重置当前轮次
+        const resetCurrentCycle = () => {
+            if (confirm('确定要重置当前抽取轮次吗？这将清空所有学生的抽取记录。')) {
+                resetDrawRecords();
+            }
         };
 
         // 显示提示信息
@@ -260,14 +442,38 @@ const app = Vue.createApp({
             }
         };
 
+        // 获取学生抽取统计信息
+        const getStudentDrawStats = (studentId) => {
+            return studentDrawCounts.value[studentId] || 0;
+        };
+
+        // 计算平均抽取次数
+        const getAverageDrawCount = Vue.computed(() => {
+            const selectedIds = selectedStudents.value.map(s => s.id);
+            const counts = selectedIds.map(id => getStudentDrawStats(id));
+            const total = counts.reduce((sum, count) => sum + count, 0);
+            return selectedIds.length > 0 ? (total / selectedIds.length).toFixed(2) : '0.00';
+        });
+
         // 生命周期钩子
         Vue.onMounted(() => {
             selectedStudents.value = [...students.value];
+            calculateMaxDraws(); // 初始化最大抽取次数
+            
             // 页面加载时自动获取原神一言
             fetchGenshinQuote();
             
             // 设置定时器，每30秒自动刷新一次原神一言
             setInterval(fetchGenshinQuote, 30000);
+            
+            // 从本地存储加载随机种子（如果存在）
+            const savedSeed = localStorage.getItem('drawSystemSeed');
+            if (savedSeed) {
+                repeatControlSeed.value = parseInt(savedSeed);
+            }
+            
+            // 保存随机种子到本地存储
+            localStorage.setItem('drawSystemSeed', repeatControlSeed.value.toString());
         });
 
         // 暴露给模板使用的变量和方法
@@ -284,6 +490,11 @@ const app = Vue.createApp({
             isMusicPlaying,
             onlyTop11,
             participationPercentage,
+            repeatControlSeed,
+            studentDrawCounts,
+            cycleResetCounter,
+            maxDrawsBeforeReset,
+            getAverageDrawCount,
             toggleStudentSelection,
             isSelected,
             selectAllStudents,
@@ -294,7 +505,12 @@ const app = Vue.createApp({
             toggleMusic,
             quote,
             isFetchingQuote,
-            fetchGenshinQuote
+            fetchGenshinQuote,
+            replayHistoryDraw,
+            setRandomSeed,
+            resetCurrentCycle,
+            getStudentDrawStats,
+            calculateMaxDraws
         };
     }
 });
