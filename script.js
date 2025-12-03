@@ -151,6 +151,9 @@ const app = Vue.createApp({
             isRolling.value = true;
             currentResult.value = [];
 
+            // 计算不重复抽取的最大历史记录长度
+            const maxHistoryLength = Math.floor(eligibleStudents.length * 0.8);
+
             // 虚晃一枪动画配置参数 - 性能优化版
             const animationConfig = {
                 totalDuration: 900, // 总动画时长（毫秒）- 从1200ms缩短到900ms，减少25%
@@ -178,9 +181,6 @@ const app = Vue.createApp({
             
             // 计算最终结果（只计算一次，避免在每一帧重复计算）
             const calculateFinalResult = () => {
-                // 计算不重复抽取的最大历史记录长度
-                const maxHistoryLength = Math.floor(eligibleStudents.length * 0.8);
-                
                 // 过滤出最近没有被抽取的学生
                 const recentStudentIds = new Set(recentHistory.value.map(s => s.id));
                 let availableStudents = eligibleStudents.filter(s => !recentStudentIds.has(s.id));
@@ -282,47 +282,64 @@ const app = Vue.createApp({
                 }
             };
 
-            const animateRolling = () => {
-                if (currentFrame < totalFrames) {
-                    // 计算当前应该显示的学生索引
-                    currentIndex = calculateCurrentIndex(currentFrame);
-                    // 确保索引为正数
-                    currentIndex = (currentIndex + eligibleStudents.length) % eligibleStudents.length;
-                    
-                    // 显示当前学生
-                    currentResult.value = [eligibleStudents[currentIndex]];
-                    currentFrame++;
-                    
-                    // 继续下一帧
-                    setTimeout(animateRolling, animationConfig.frameDuration);
-                } else {
-                        // 使用预计算的最终结果
-                    currentResult.value = finalResult;
-                    
-                    // 更新最近历史记录
-                    recentHistory.value.push(...currentResult.value);
-                    // 保持历史记录长度不超过最大限制
-                    if (recentHistory.value.length > maxHistoryLength) {
-                        recentHistory.value = recentHistory.value.slice(recentHistory.value.length - maxHistoryLength);
-                    }
-                    
-                    // 更新历史记录
-                    totalDraws.value++;
-                    const now = new Date();
-                    const timeString = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
-                    history.value.unshift({
-                        time: timeString,
-                        count: count,
-                        people: currentResult.value
-                    });
-                    
-                    // 保留最近10条记录
-                    if (history.value.length > 10) {
-                        history.value.pop();
-                    }
-                    
+            // 添加超时处理，确保isRolling状态能被正确重置
+            const timeoutId = setTimeout(() => {
+                if (isRolling.value) {
+                    console.error('抽取动画超时，强制重置状态');
                     isRolling.value = false;
-                    showToast('成功', `已抽取${count}名学生`);
+                    showToast('提示', '抽取过程超时，请重试');
+                }
+            }, animationConfig.totalDuration + 200); // 总动画时长 + 200ms缓冲
+            
+            const animateRolling = () => {
+                try {
+                    if (currentFrame < totalFrames) {
+                        // 计算当前应该显示的学生索引
+                        currentIndex = calculateCurrentIndex(currentFrame);
+                        // 确保索引为正数
+                        currentIndex = (currentIndex + eligibleStudents.length) % eligibleStudents.length;
+                        
+                        // 显示当前学生
+                        currentResult.value = [eligibleStudents[currentIndex]];
+                        currentFrame++;
+                        
+                        // 继续下一帧
+                        setTimeout(animateRolling, animationConfig.frameDuration);
+                    } else {
+                            // 使用预计算的最终结果
+                        currentResult.value = finalResult;
+                        
+                        // 更新最近历史记录
+                        recentHistory.value.push(...currentResult.value);
+                        // 保持历史记录长度不超过最大限制
+                        if (recentHistory.value.length > maxHistoryLength) {
+                            recentHistory.value = recentHistory.value.slice(recentHistory.value.length - maxHistoryLength);
+                        }
+                        
+                        // 更新历史记录
+                        totalDraws.value++;
+                        const now = new Date();
+                        const timeString = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+                        history.value.unshift({
+                            time: timeString,
+                            count: count,
+                            people: currentResult.value
+                        });
+                        
+                        // 保留最近10条记录
+                        if (history.value.length > 10) {
+                            history.value.pop();
+                        }
+                        
+                        isRolling.value = false;
+                        clearTimeout(timeoutId); // 清除超时定时器
+                        showToast('成功', `已抽取${count}名学生`);
+                    }
+                } catch (error) {
+                    console.error('抽取动画发生错误:', error);
+                    isRolling.value = false;
+                    clearTimeout(timeoutId); // 清除超时定时器
+                    showToast('错误', '抽取过程发生错误，请重试');
                 }
             };
 
