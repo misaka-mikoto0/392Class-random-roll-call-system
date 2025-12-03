@@ -108,8 +108,8 @@ const app = Vue.createApp({
             return x - Math.floor(x);
         };
         
-        // 随机种子，可设置为固定值以实现结果复现
-        let randomSeed = Vue.ref(12345);
+        // 随机种子，随机生成以确保每次运行结果不同
+        let randomSeed = Vue.ref(Math.floor(Math.random() * 1000000000));
         
         // Fisher-Yates 洗牌算法（使用固定种子）
         const shuffleArray = (array) => {
@@ -418,9 +418,9 @@ const app = Vue.createApp({
 
         // 重置随机种子
         const resetSeed = () => {
-            randomSeed.value = 12345;
+            randomSeed.value = Math.floor(Math.random() * 1000000000);
             recentHistory.value = [];
-            showToast('提示', '随机种子已重置，结果将重新开始复现');
+            showToast('提示', '随机种子已重置，将生成新的随机序列');
         };
         
         // 暴露给模板使用的变量和方法
