@@ -57,7 +57,7 @@
                     <div v-else>
                         <div class="result-title">抽取结果</div>
                         <div class="result-names">
-                            <span v-for="(student, index) in currentResult" :key="index" :class="['result-badge', { 'golden': student.rank <= 11 }]">
+                            <span v-for="(student, index) in currentResult" :key="index" :class="['result-badge', { 'golden': student.rank <= 11, 'green-name': student.name === '贾烨标' }]">
                                 {{ student.name }}
                             </span>
                         </div>
@@ -110,7 +110,7 @@
                                         <span class="history-count">{{ record.count }}人</span>
                                     </div>
                                     <div class="history-names">
-                                        <span v-for="(person, pIndex) in record.people" :key="pIndex">
+                                        <span v-for="(person, pIndex) in record.people" :key="pIndex" :class="{ 'green-name': person.name === '贾烨标' }">
                                             {{ person.name }}<span v-if="pIndex < record.people.length - 1">, </span>
                                         </span>
                                     </div>
@@ -242,7 +242,7 @@
                                 </div>
                             </div>
                             <div class="student-info">
-                                <div class="student-name">{{ student.name }}</div>
+                                <div class="student-name" :class="{ 'green-name': student.name === '贾烨标' }">{{ student.name }}</div>
                                 <div class="student-rank">第{{ student.rank }}名</div>
                             </div>
                             <div class="selection-indicator">

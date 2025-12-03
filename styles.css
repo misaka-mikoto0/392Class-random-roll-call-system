@@ -571,6 +571,12 @@ body.with-background::before {
     box-shadow: 0 25px 30px -5px rgba(255, 215, 0, 0.4), 0 10px 15px -6px rgba(255, 215, 0, 0.3);
 }
 
+/* 特殊名字颜色 */
+.green-name {
+    color: #10b981 !important;
+    font-weight: bold;
+}
+
 @keyframes popIn {
     0% { opacity: 0; transform: scale(0.7) translateY(20px); }
     70% { opacity: 1; transform: scale(1.1) translateY(-5px); }
