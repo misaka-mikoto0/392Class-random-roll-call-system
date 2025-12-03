@@ -151,15 +151,15 @@ const app = Vue.createApp({
             isRolling.value = true;
             currentResult.value = [];
 
-            // 虚晃一枪动画配置参数 - 缩短版
+            // 虚晃一枪动画配置参数 - 性能优化版
             const animationConfig = {
-                totalDuration: 1200, // 总动画时长（毫秒）- 从2000ms缩短到1200ms
-                initialAccelerationDuration: 200, // 初始加速阶段时长 - 从300ms缩短到200ms
-                misleadDecelerationDuration: 500, // 误导性减速阶段时长 - 从800ms缩短到500ms
-                fakeoutDuration: 250, // 突然变向阶段时长 - 从400ms缩短到250ms
-                finalDecelerationDuration: 250, // 最终减速阶段时长 - 从500ms缩短到250ms
-                fakeoutIntensity: 0.6, // 虚晃强度（0-1）- 保持不变
-                frameDuration: 12 // 每帧持续时间（毫秒）- 从15ms缩短到12ms，提高流畅度
+                totalDuration: 900, // 总动画时长（毫秒）- 从1200ms缩短到900ms，减少25%
+                initialAccelerationDuration: 150, // 初始加速阶段时长 - 从200ms缩短到150ms
+                misleadDecelerationDuration: 350, // 误导性减速阶段时长 - 从500ms缩短到350ms
+                fakeoutDuration: 200, // 突然变向阶段时长 - 从250ms缩短到200ms
+                finalDecelerationDuration: 200, // 最终减速阶段时长 - 从250ms缩短到200ms
+                fakeoutIntensity: 0.5, // 虚晃强度（0-1）- 略微降低以简化计算
+                frameDuration: 10 // 每帧持续时间（毫秒）- 从12ms缩短到10ms，提高流畅度
             };
 
             // 计算各阶段的帧数
@@ -176,8 +176,40 @@ const app = Vue.createApp({
             const misleadTargetIndex = Math.floor(seededRandom(randomSeed.value) * eligibleStudents.length);
             randomSeed.value++;
             
-            // 随机选择一个方向（1为正向，-1为反向）
-            const initialDirection = Math.random() > 0.5 ? 1 : -1;
+            // 计算最终结果（只计算一次，避免在每一帧重复计算）
+            const calculateFinalResult = () => {
+                // 计算不重复抽取的最大历史记录长度
+                const maxHistoryLength = Math.floor(eligibleStudents.length * 0.8);
+                
+                // 过滤出最近没有被抽取的学生
+                const recentStudentIds = new Set(recentHistory.value.map(s => s.id));
+                let availableStudents = eligibleStudents.filter(s => !recentStudentIds.has(s.id));
+                
+                // 如果没有可用学生（理论上不应该发生），则重置历史记录
+                if (availableStudents.length === 0) {
+                    recentHistory.value = [];
+                    availableStudents = eligibleStudents;
+                }
+                
+                // 如果可用学生数量不足，则补充最近抽取的学生
+                while (availableStudents.length < count) {
+                    // 找到最早抽取的学生添加到可用列表
+                    const earliestStudent = recentHistory.value.shift();
+                    if (earliestStudent) {
+                        availableStudents.push(earliestStudent);
+                    }
+                }
+                
+                // 使用固定种子随机选择最终结果
+                const shuffled = shuffleArray(availableStudents);
+                return shuffled.slice(0, count);
+            };
+            
+            // 预计算最终结果信息，避免在动画过程中重复计算
+            const finalResult = calculateFinalResult();
+            const finalStudent = finalResult[0];
+            const finalIndex = eligibleStudents.findIndex(s => s.id === finalStudent.id);
+            const fakeoutEndIndex = Math.floor((misleadTargetIndex + eligibleStudents.length * animationConfig.fakeoutIntensity) % eligibleStudents.length);
             
             // 缓动函数库
             const easeFunctions = {
@@ -244,13 +276,7 @@ const app = Vue.createApp({
                     progress = (frame - initialAccelFrames - misleadDecelFrames - fakeoutFrames) / finalDecelFrames;
                     easedProgress = easeFunctions.easeOutBounce(progress);
                     
-                    // 计算最终结果（使用固定种子确保可复现）
-                    const shuffled = shuffleArray(eligibleStudents);
-                    const finalStudent = shuffled[0];
-                    const finalIndex = eligibleStudents.findIndex(s => s.id === finalStudent.id);
-                    
-                    // 从虚晃位置平滑过渡到最终位置
-                    const fakeoutEndIndex = Math.floor((misleadTargetIndex + eligibleStudents.length * animationConfig.fakeoutIntensity) % eligibleStudents.length);
+                    // 使用预计算的最终结果，避免重复计算
                     const diff = finalIndex - fakeoutEndIndex;
                     return Math.floor((fakeoutEndIndex + diff * easedProgress) % eligibleStudents.length);
                 }
@@ -270,32 +296,8 @@ const app = Vue.createApp({
                     // 继续下一帧
                     setTimeout(animateRolling, animationConfig.frameDuration);
                 } else {
-                    // 计算最终结果
-                    // 计算不重复抽取的最大历史记录长度
-                    const maxHistoryLength = Math.floor(eligibleStudents.length * 0.8);
-                    
-                    // 过滤出最近没有被抽取的学生
-                    const recentStudentIds = new Set(recentHistory.value.map(s => s.id));
-                    let availableStudents = eligibleStudents.filter(s => !recentStudentIds.has(s.id));
-                    
-                    // 如果没有可用学生（理论上不应该发生），则重置历史记录
-                    if (availableStudents.length === 0) {
-                        recentHistory.value = [];
-                        availableStudents = eligibleStudents;
-                    }
-                    
-                    // 如果可用学生数量不足，则补充最近抽取的学生
-                    while (availableStudents.length < count) {
-                        // 找到最早抽取的学生添加到可用列表
-                        const earliestStudent = recentHistory.value.shift();
-                        if (earliestStudent) {
-                            availableStudents.push(earliestStudent);
-                        }
-                    }
-                    
-                    // 使用固定种子随机选择最终结果
-                    const shuffled = shuffleArray(availableStudents);
-                    currentResult.value = shuffled.slice(0, count);
+                        // 使用预计算的最终结果
+                    currentResult.value = finalResult;
                     
                     // 更新最近历史记录
                     recentHistory.value.push(...currentResult.value);
