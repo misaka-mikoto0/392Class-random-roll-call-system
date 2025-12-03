@@ -5,48 +5,47 @@ const app = Vue.createApp({
     setup() {
         // 学生数据
         const students = Vue.ref([
-            { id: 1, name: '王铖浩', rank: 1, probability: 1 },
+            { id: 1, name: '胡逸柯', rank: 1, probability: 1 },
             { id: 2, name: '原梓杰', rank: 2, probability: 1 },
-            { id: 3, name: '茹柯臻', rank: 3, probability: 1 },
-            { id: 4, name: '胡逸柯', rank: 4, probability: 0.9 },
-            { id: 5, name: '刘艺博', rank: 5, probability: 1 },
-            { id: 6, name: '冯炜杰', rank: 6, probability: 1 },
-            { id: 7, name: '李梦雨', rank: 7, probability: 1 },
-            { id: 8, name: '王彦景', rank: 8, probability: 1 },
-            { id: 9, name: '李帅辉', rank: 9, probability: 1 },
-            { id: 10, name: '邢任静', rank: 10, probability: 1 },
-            { id: 11, name: '杜桓荣', rank: 11, probability: 1 },
-            { id: 12, name: '晋奥钊', rank: 12, probability: 1 },
-            { id: 13, name: '元静怡', rank: 13, probability: 1 },
-            { id: 14, name: '成浩宇', rank: 14, probability: 1 },
-            { id: 15, name: '常煜弦', rank: 15, probability: 1 },
-            { id: 16, name: '王鹤凝', rank: 16, probability: 1 },
-            { id: 17, name: '段晶晶', rank: 17, probability: 1 },
-            { id: 18, name: '陕禹帆', rank: 18, probability: 1 },
+            { id: 3, name: '王彦景', rank: 3, probability: 1 },
+            { id: 4, name: '邢任静', rank: 4, probability: 1 },
+            { id: 5, name: '李梦雨', rank: 5, probability: 1 },
+            { id: 6, name: '刘艺博', rank: 6, probability: 1 },
+            { id: 7, name: '常煜弦', rank: 7, probability: 1 },
+            { id: 8, name: '王鹤凝', rank: 8, probability: 1 },
+            { id: 9, name: '王铖浩', rank: 9, probability: 1 },
+            { id: 10, name: '李帅辉', rank: 10, probability: 1 },
+            { id: 11, name: '元静怡', rank: 11, probability: 1 },
+            { id: 12, name: '段晶晶', rank: 12, probability: 1 },
+            { id: 13, name: '马欣怡', rank: 13, probability: 1 },
+            { id: 14, name: '冯炜杰', rank: 14, probability: 1 },
+            { id: 15, name: '杜桓荣', rank: 15, probability: 1 },
+            { id: 16, name: '茹柯臻', rank: 16, probability: 1 },
+            { id: 17, name: '李佳遥', rank: 17, probability: 1 },
+            { id: 18, name: '樊师彤', rank: 18, probability: 1 },
             { id: 19, name: '李湣帅', rank: 19, probability: 1 },
-            { id: 20, name: '李怡萱', rank: 20, probability: 1 },
-            { id: 21, name: '李佳遥', rank: 21, probability: 1 },
-            { id: 22, name: '王云鹏', rank: 22, probability: 1 },
-            { id: 23, name: '马欣怡', rank: 23, probability: 1 },
-            { id: 24, name: '高璐鑫', rank: 24, probability: 1 },
-            { id: 25, name: '郝鑫悦', rank: 25, probability: 1 },
-            { id: 26, name: '张严支', rank: 26, probability: 1 },
-            { id: 27, name: '李向菲', rank: 27, probability: 1 },
-            { id: 28, name: '延泽玉', rank: 28, probability: 1 },
-            { id: 29, name: '朱奕瑶', rank: 29, probability: 1 },
-            { id: 30, name: '樊师彤', rank: 30, probability: 1 },
-            { id: 32, name: '贾烨标', rank: 32, probability: 1 },
-            { id: 33, name: '赵一然', rank: 33, probability: 1 },
-            { id: 34, name: '段培清', rank: 34, probability: 1 },
-            { id: 35, name: '牛一燃', rank: 35, probability: 1 },
-            { id: 36, name: '杨子怡', rank: 36, probability: 1 },
-            { id: 37, name: '王博宇', rank: 37, probability: 1 },
-            { id: 39, name: '赵晨旭', rank: 39, probability: 1 },
-            { id: 40, name: '崔刘杰', rank: 40, probability: 1 },
-            { id: 41, name: '曹凯乐', rank: 41, probability: 1 },
-            { id: 42, name: '白义菲', rank: 42, probability: 1 },
-            { id: 43, name: '赵渊博', rank: 43, probability: 1 },
-            { id: 44, name: '王沐勋', rank: 44, probability: 1 }
+            { id: 20, name: '成浩宇', rank: 20, probability: 1 },
+            { id: 21, name: '牛一燃', rank: 21, probability: 1 },
+            { id: 22, name: '李怡萱', rank: 22, probability: 1 },
+            { id: 23, name: '王云鹏', rank: 23, probability: 1 },
+            { id: 24, name: '晋奥钊', rank: 24, probability: 1 },
+            { id: 25, name: '张严支', rank: 25, probability: 1 },
+            { id: 26, name: '高璐鑫', rank: 26, probability: 1 },
+            { id: 27, name: '朱奕瑶', rank: 27, probability: 1 },
+            { id: 28, name: '赵晨旭', rank: 28, probability: 1 },
+            { id: 29, name: '陕禹帆', rank: 29, probability: 1 },
+            { id: 30, name: '赵一然', rank: 30, probability: 1 },
+            { id: 31, name: '赵渊博', rank: 31, probability: 1 },
+            { id: 32, name: '崔刘杰', rank: 32, probability: 1 },
+            { id: 33, name: '李向菲', rank: 33, probability: 1 },
+            { id: 34, name: '郝鑫悦', rank: 34, probability: 1 },
+            { id: 35, name: '王沐勋', rank: 35, probability: 1 },
+            { id: 36, name: '白义菲', rank: 36, probability: 1 },
+            { id: 37, name: '杨子怡', rank: 37, probability: 1 },
+            { id: 38, name: '王博宇', rank: 38, probability: 1 },
+            { id: 39, name: '延泽玉', rank: 39, probability: 1 },
+            { id: 40, name: '贾烨标', rank: 40, probability: 1 },
+            { id: 41, name: '曹凯乐', rank: 41, probability: 1 }
         ]);
 
         // 状态管理
@@ -152,21 +151,126 @@ const app = Vue.createApp({
             isRolling.value = true;
             currentResult.value = [];
 
-            // 动画效果
-            const animationDuration = 1000; // 动画持续时间（毫秒）
-            const frameDuration = 50; // 每帧持续时间（毫秒）
-            const frameCount = animationDuration / frameDuration;
+            // 虚晃一枪动画配置参数 - 缩短版
+            const animationConfig = {
+                totalDuration: 1200, // 总动画时长（毫秒）- 从2000ms缩短到1200ms
+                initialAccelerationDuration: 200, // 初始加速阶段时长 - 从300ms缩短到200ms
+                misleadDecelerationDuration: 500, // 误导性减速阶段时长 - 从800ms缩短到500ms
+                fakeoutDuration: 250, // 突然变向阶段时长 - 从400ms缩短到250ms
+                finalDecelerationDuration: 250, // 最终减速阶段时长 - 从500ms缩短到250ms
+                fakeoutIntensity: 0.6, // 虚晃强度（0-1）- 保持不变
+                frameDuration: 12 // 每帧持续时间（毫秒）- 从15ms缩短到12ms，提高流畅度
+            };
+
+            // 计算各阶段的帧数
+            const initialAccelFrames = Math.round(animationConfig.initialAccelerationDuration / animationConfig.frameDuration);
+            const misleadDecelFrames = Math.round(animationConfig.misleadDecelerationDuration / animationConfig.frameDuration);
+            const fakeoutFrames = Math.round(animationConfig.fakeoutDuration / animationConfig.frameDuration);
+            const finalDecelFrames = Math.round(animationConfig.finalDecelerationDuration / animationConfig.frameDuration);
+            const totalFrames = initialAccelFrames + misleadDecelFrames + fakeoutFrames + finalDecelFrames;
+
             let currentFrame = 0;
+            let currentIndex = 0;
+            
+            // 随机选择一个误导性目标位置
+            const misleadTargetIndex = Math.floor(seededRandom(randomSeed.value) * eligibleStudents.length);
+            randomSeed.value++;
+            
+            // 随机选择一个方向（1为正向，-1为反向）
+            const initialDirection = Math.random() > 0.5 ? 1 : -1;
+            
+            // 缓动函数库
+            const easeFunctions = {
+                // 加速
+                easeInQuad: (t) => t * t,
+                // 减速
+                easeOutQuad: (t) => t * (2 - t),
+                // 先加速后减速
+                easeInOutQuad: (t) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t,
+                // 弹性效果
+                easeOutElastic: (t) => {
+                    const c4 = (2 * Math.PI) / 3;
+                    return t === 0 ? 0 : t === 1 ? 1 : Math.pow(2, -10 * t) * Math.sin((t * 10 - 0.75) * c4) + 1;
+                },
+                // 弹跳效果
+                easeOutBounce: (t) => {
+                    const n1 = 7.5625;
+                    const d1 = 2.75;
+                    if (t < 1 / d1) {
+                        return n1 * t * t;
+                    } else if (t < 2 / d1) {
+                        return n1 * (t -= 1.5 / d1) * t + 0.75;
+                    } else if (t < 2.5 / d1) {
+                        return n1 * (t -= 2.25 / d1) * t + 0.9375;
+                    } else {
+                        return n1 * (t -= 2.625 / d1) * t + 0.984375;
+                    }
+                }
+            };
+
+            // 计算当前帧应该显示的学生索引
+            const calculateCurrentIndex = (frame) => {
+                let progress, easedProgress;
+                
+                if (frame <= initialAccelFrames) {
+                    // 阶段1：初始加速
+                    progress = frame / initialAccelFrames;
+                    easedProgress = easeFunctions.easeInQuad(progress);
+                    // 快速增加索引
+                    return Math.floor(easedProgress * eligibleStudents.length * 3) % eligibleStudents.length;
+                } else if (frame <= initialAccelFrames + misleadDecelFrames) {
+                    // 阶段2：误导性减速 - 看似要停在misleadTargetIndex
+                    progress = (frame - initialAccelFrames) / misleadDecelFrames;
+                    easedProgress = easeFunctions.easeOutQuad(progress);
+                    
+                    // 计算从当前位置到误导目标的插值
+                    const startIndex = Math.floor(eligibleStudents.length * 3) % eligibleStudents.length;
+                    const diff = misleadTargetIndex - startIndex;
+                    return Math.floor((startIndex + diff * easedProgress) % eligibleStudents.length);
+                } else if (frame <= initialAccelFrames + misleadDecelFrames + fakeoutFrames) {
+                    // 阶段3：突然变向 - 虚晃一枪
+                    progress = (frame - initialAccelFrames - misleadDecelFrames) / fakeoutFrames;
+                    easedProgress = easeFunctions.easeInOutQuad(progress);
+                    
+                    // 计算变向幅度
+                    const fakeoutRange = Math.floor(eligibleStudents.length * animationConfig.fakeoutIntensity);
+                    // 随机选择变向方向
+                    const fakeoutDirection = Math.random() > 0.5 ? 1 : -1;
+                    
+                    // 从误导目标位置突然向相反方向移动
+                    return Math.floor((misleadTargetIndex + fakeoutDirection * fakeoutRange * easedProgress) % eligibleStudents.length);
+                } else {
+                    // 阶段4：最终减速到真实结果
+                    progress = (frame - initialAccelFrames - misleadDecelFrames - fakeoutFrames) / finalDecelFrames;
+                    easedProgress = easeFunctions.easeOutBounce(progress);
+                    
+                    // 计算最终结果（使用固定种子确保可复现）
+                    const shuffled = shuffleArray(eligibleStudents);
+                    const finalStudent = shuffled[0];
+                    const finalIndex = eligibleStudents.findIndex(s => s.id === finalStudent.id);
+                    
+                    // 从虚晃位置平滑过渡到最终位置
+                    const fakeoutEndIndex = Math.floor((misleadTargetIndex + eligibleStudents.length * animationConfig.fakeoutIntensity) % eligibleStudents.length);
+                    const diff = finalIndex - fakeoutEndIndex;
+                    return Math.floor((fakeoutEndIndex + diff * easedProgress) % eligibleStudents.length);
+                }
+            };
 
             const animateRolling = () => {
-                if (currentFrame < frameCount) {
-                    // 随机显示一个学生（使用固定种子）
-                    const randomIndex = Math.floor(seededRandom(randomSeed.value) * eligibleStudents.length);
-                    randomSeed.value++;
-                    currentResult.value = [eligibleStudents[randomIndex]];
+                if (currentFrame < totalFrames) {
+                    // 计算当前应该显示的学生索引
+                    currentIndex = calculateCurrentIndex(currentFrame);
+                    // 确保索引为正数
+                    currentIndex = (currentIndex + eligibleStudents.length) % eligibleStudents.length;
+                    
+                    // 显示当前学生
+                    currentResult.value = [eligibleStudents[currentIndex]];
                     currentFrame++;
-                    setTimeout(animateRolling, frameDuration);
+                    
+                    // 继续下一帧
+                    setTimeout(animateRolling, animationConfig.frameDuration);
                 } else {
+                    // 计算最终结果
                     // 计算不重复抽取的最大历史记录长度
                     const maxHistoryLength = Math.floor(eligibleStudents.length * 0.8);
                     
