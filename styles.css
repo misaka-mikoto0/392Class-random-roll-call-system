@@ -571,10 +571,48 @@ body.with-background::before {
     box-shadow: 0 25px 30px -5px rgba(255, 215, 0, 0.4), 0 10px 15px -6px rgba(255, 215, 0, 0.3);
 }
 
-/* 特殊名字颜色 */
-.green-name {
-    color: #10b981 !important;
-    font-weight: bold;
+/* 贾烨标卡片绿色主题样式 */
+.jia-card {
+    border-color: #10b981 !important;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(16, 185, 129, 0.03)) !important;
+}
+
+.jia-card:hover {
+    border-color: #059669 !important;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(16, 185, 129, 0.06)) !important;
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.2) !important;
+}
+
+.jia-card.selected {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.08)) !important;
+    border-color: #059669 !important;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2) !important;
+}
+
+/* 贾烨标头像样式 */
+.jia-avatar {
+    background: linear-gradient(135deg, #10b981, #059669) !important;
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.3) !important;
+}
+
+/* 贾烨标排名样式 */
+.jia-rank {
+    background: rgba(16, 185, 129, 0.1) !important;
+    color: #059669 !important;
+}
+
+/* 贾烨标抽取结果样式 */
+.jia-result {
+    background: linear-gradient(135deg, #10b981, #059669) !important;
+    box-shadow: 0 0 30px rgba(16, 185, 129, 0.3) !important;
+}
+
+.jia-result:hover {
+    box-shadow: 0 25px 30px -5px rgba(16, 185, 129, 0.4), 0 10px 15px -6px rgba(16, 185, 129, 0.3) !important;
+}
+
+.jia-result::before {
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent) !important;
 }
 
 @keyframes popIn {

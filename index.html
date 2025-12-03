@@ -57,7 +57,7 @@
                     <div v-else>
                         <div class="result-title">抽取结果</div>
                         <div class="result-names">
-                            <span v-for="(student, index) in currentResult" :key="index" :class="['result-badge', { 'golden': student.rank <= 11, 'green-name': student.name === '贾烨标' }]">
+                            <span v-for="(student, index) in currentResult" :key="index" :class="['result-badge', { 'golden': student.rank <= 11, 'jia-result': student.name === '贾烨标' }]">
                                 {{ student.name }}
                             </span>
                         </div>
@@ -110,7 +110,7 @@
                                         <span class="history-count">{{ record.count }}人</span>
                                     </div>
                                     <div class="history-names">
-                                        <span v-for="(person, pIndex) in record.people" :key="pIndex" :class="{ 'green-name': person.name === '贾烨标' }">
+                                        <span v-for="(person, pIndex) in record.people" :key="pIndex">
                                             {{ person.name }}<span v-if="pIndex < record.people.length - 1">, </span>
                                         </span>
                                     </div>
@@ -233,17 +233,17 @@
                     </div>
                     <div v-else class="student-grid">
                         <div v-for="student in students" :key="student.id"
-                             class="student-card" :class="{ 'selected': isSelected(student) }"
+                             class="student-card" :class="{ 'selected': isSelected(student), 'jia-card': student.name === '贾烨标' }"
                              @click="toggleStudentSelection(student)">
-                            <div class="student-avatar" :class="{ 'top-student': student.rank <= 11 }">
+                            <div class="student-avatar" :class="{ 'top-student': student.rank <= 11, 'jia-avatar': student.name === '贾烨标' }">
                                 {{ student.name.charAt(0) }}
                                 <div v-if="student.rank <= 11" class="crown-icon">
                                     <i class="fas fa-crown"></i>
                                 </div>
                             </div>
                             <div class="student-info">
-                                <div class="student-name" :class="{ 'green-name': student.name === '贾烨标' }">{{ student.name }}</div>
-                                <div class="student-rank">第{{ student.rank }}名</div>
+                                <div class="student-name">{{ student.name }}</div>
+                                <div class="student-rank" :class="{ 'jia-rank': student.name === '贾烨标' }">第{{ student.rank }}名</div>
                             </div>
                             <div class="selection-indicator">
                                 <i class="fas fa-check-circle" v-if="isSelected(student)"></i>
