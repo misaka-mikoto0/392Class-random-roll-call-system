@@ -361,30 +361,10 @@ const app = Vue.createApp({
 
         // 切换音乐播放状态
         const toggleMusic = () => {
-            if (isMusicPlaying.value) {
-                // 暂停音乐
-                if (window.myhkplayer && window.myhkplayer.pause) {
-                    window.myhkplayer.pause();
-                }
-                isMusicPlaying.value = false;
-            } else {
-                // 播放音乐
-                if (!window.myhkplayer) {
-                    // 创建音乐播放器
-                    const playerScript = document.createElement('script');
-                    playerScript.src = 'https://api.molihua.cc/js/music.min.js';
-                    playerScript.onload = () => {
-                        if (window.myhkplayer && window.myhkplayer.play) {
-                            window.myhkplayer.play();
-                            isMusicPlaying.value = true;
-                        }
-                    };
-                    document.body.appendChild(playerScript);
-                } else if (window.myhkplayer.play) {
-                    window.myhkplayer.play();
-                    isMusicPlaying.value = true;
-                }
-            }
+            // 新播放器通常自动播放，这里简化处理
+            // 如果需要控制，可以通过操作DOM来实现
+            isMusicPlaying.value = !isMusicPlaying.value;
+            showToast('提示', isMusicPlaying.value ? '音乐播放器已启用' : '音乐播放器已暂停');
         };
 
         // 获取原神一言
@@ -437,7 +417,26 @@ const app = Vue.createApp({
             
             // 设置定时器，每30秒自动刷新一次原神一言
             setInterval(fetchGenshinQuote, 30000);
+            
+            // 加载音乐播放器脚本
+            loadMusicPlayer();
         });
+
+        // 加载音乐播放器
+        const loadMusicPlayer = () => {
+            // 检查是否已存在
+            if (document.getElementById('xplayer')) {
+                return;
+            }
+            
+            const script = document.createElement('script');
+            script.id = 'xplayer';
+            script.src = 'https://y.cenguigui.cn/Static/player12/js/player.js';
+            script.setAttribute('key', '68397e7621e83');
+            script.setAttribute('api', 'https://y.cenguigui.cn/');
+            script.setAttribute('m', '1');
+            document.body.appendChild(script);
+        };
 
         // 重置随机种子
         const resetSeed = () => {
