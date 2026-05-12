@@ -41,14 +41,11 @@ const app = Vue.createApp({
             { id: 34, name: '白阳兰', rank: 34, probability: 1 },
             { id: 35, name: '赵育敏', rank: 35, probability: 1 },
             { id: 36, name: '段培清', rank: 36, probability: 1 },
-            { id: 37, name: '张明远', rank: 37, probability: 1 },
             { id: 38, name: '赵晨旭', rank: 38, probability: 1 },
             { id: 39, name: '赵渊博', rank: 39, probability: 1 },
             { id: 40, name: '延泽玉', rank: 40, probability: 1 },
-            { id: 41, name: '宋俊贤', rank: 41, probability: 1 },
             { id: 42, name: '贾烨标', rank: 42, probability: 1 },
             { id: 43, name: '李昀宵', rank: 43, probability: 1 },
-            { id: 44, name: '郭迅宇', rank: 44, probability: 1 },
             { id: 45, name: '蒋鹕涛', rank: 45, probability: 1 }
         ]);
 
