@@ -4,33 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>392班 · 雅集点名</title>
-    <!-- 引入外部样式文件 -->
     <link rel="stylesheet" href="styles.css">
-    <!-- MDUI CSS -->
-    <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/mdui/2.1.4/mdui.min.css">
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdn.staticfile.net/font-awesome/6.4.0/css/all.min.css">
-    <!-- 音乐播放器样式 -->
-    <link rel="stylesheet" id="font-awesome-css" href="https://cdn.staticfile.net/font-awesome/4.7.0/css/font-awesome.min.css" type="text/css" media="all">
-    <!-- 引入外部JavaScript库 -->
-    <script src="https://cdn.bootcdn.net/ajax/libs/mdui/2.1.4/mdui.global.js"></script>
-    <!-- jQuery -->
-    <script src="https://cdn.staticfile.net/jquery/3.5.1/jquery.min.js"></script>
-    <!-- 背景切换功能 -->
-    <script src="background.js"></script>
-    <!-- Vue 3 -->
-    <script src="https://cdn.staticfile.net/vue/3.4.21/vue.global.min.js"></script>
-    
-    <!-- jQuery Cookie Plugin -->
-    <script src="https://cdn.bootcdn.net/ajax/libs/js-cookie/3.0.5/js.cookie.min.js"></script>
-    
-    <!-- 引入外部JavaScript文件 -->
-    <script src="script.js"></script>
+    <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/vue/3.4.21/vue.global.prod.js"></script>
 </head>
 <body>
     <div id="app">
         <div class="app-container">
-            <!-- Header -->
             <div class="app-header">
                 <div class="title-card">
                     <h1 class="app-title">392班 · 雅集点名</h1>
@@ -38,171 +19,161 @@
                 </div>
             </div>
             
-            <!-- 原神一言展示区域 - 放在内容区域上方 -->
-            <div class="genshin-quote full-width">
+            <div class="genshin-quote">
                 <div class="quote-content">{{ quote.content || '正在加载一言...' }}</div>
                 <div class="quote-author">— {{ quote.author || '原神' }}</div>
             </div>
             
-            <!-- 内容区域容器 -->
-            <div class="content-wrapper optimized">
-                <!-- Main Content Area -->
+            <div class="content-wrapper">
                 <div class="main-content">
-                <div class="result-display">
-                    <div v-if="!currentResult.length" class="placeholder-text">
-                        <i class="fas fa-random fa-4x mdui-m-b-4" style="color: var(--primary-color);"></i>
-                        <p>点击下方按钮开始抽取</p>
-                        <p class="mdui-text-color-black-secondary mdui-m-t-2">系统将公平随机选择学生</p>
-                    </div>
-                    <div v-else>
-                        <div class="result-title">抽取结果</div>
-                        <div class="result-names">
-                            <span v-for="(student, index) in currentResult" :key="index" :class="['result-badge', { 'golden': student.rank <= 11, 'jia-result': student.name === '贾烨标' }]">
-                                {{ student.name }}
-                            </span>
+                    <div class="result-display">
+                        <div v-if="!currentResult.length" class="placeholder-text">
+                            <i class="fas fa-random"></i>
+                            <p>点击下方按钮开始抽取</p>
+                            <p>系统将公平随机选择学生</p>
                         </div>
-                    </div>
-                </div>
-
-                <div class="controls">
-                    <div class="primary-controls">
-                        <button class="mdui-btn mdui-color-indigo mdui-ripple select-students-btn" @click="showModal = true">
-                            <i class="mdui-icon material-icons mdui-m-r-1">people</i>
-                            选择学生
-                        </button>
-                        <div class="input-group">
-                            <i class="fas fa-user-plus"></i>
-                            <input type="number" v-model.number="drawCount" placeholder="抽取人数" min="1">
-                        </div>
-                        <button class="mdui-btn mdui-color-green mdui-ripple start-draw-btn" @click="startDrawing" :disabled="isRolling">
-                            <i class="mdui-icon material-icons mdui-m-r-1">autorenew</i>
-                            {{ isRolling ? '抽取中...' : '开始抽取' }}
-                        </button>
-                    </div>
-
-                    <div class="control-switches">
-                        <div class="switch-item">
-                            <label class="switch">
-                                <input type="checkbox" v-model="onlyTop11">
-                                <span class="slider round"></span>
-                            </label>
-                            <span class="switch-label">仅抽取前11名</span>
-                        </div>
-                    </div>
-                </div>
-            
-                <!-- 抽取记录卡片 - 移到主内容区域内部 -->
-                <div class="history-card-container">
-                    <div class="sidebar-card">
-                        <div class="card-title">
-                            <i class="mdui-icon material-icons">history</i>
-                            <span>抽取记录</span>
-                        </div>
-                        <div class="history-list">
-                            <div v-if="history.length === 0" class="mdui-text-center mdui-p-y-5 mdui-text-color-black-secondary">
-                                <i class="fas fa-clock fa-2x mdui-m-b-3" style="color: var(--primary-color);"></i>
-                                <p>暂无抽取记录</p>
+                        <div v-else>
+                            <div class="result-title">抽取结果</div>
+                            <div class="result-names">
+                                <span v-for="(student, index) in currentResult" :key="index" 
+                                      :class="['result-badge', { 
+                                          'golden': student.rank <= 11, 
+                                          'special-green': student.isSpecial,
+                                          'blue': student.rank > 11 && !student.isSpecial 
+                                      }]">
+                                    {{ student.name }}
+                                </span>
                             </div>
-                            <div v-else>
-                                <div v-for="(record, index) in history" :key="index" class="history-item">
-                                    <div class="history-header">
-                                        <div class="history-time"><i class="fas fa-clock mdui-m-r-1"></i>{{ record.time }}</div>
-                                        <span class="history-count">{{ record.count }}人</span>
-                                    </div>
-                                    <div class="history-names">
-                                        <span v-for="(person, pIndex) in record.people" :key="pIndex">
-                                            {{ person.name }}<span v-if="pIndex < record.people.length - 1">, </span>
-                                        </span>
+                        </div>
+                    </div>
+
+                    <div class="controls">
+                        <div class="primary-controls">
+                            <button class="tx-btn tx-btn-secondary" @click="showModal = true">
+                                <i class="fas fa-users"></i>选择学生
+                            </button>
+                            <div class="input-group">
+                                <i class="fas fa-user-plus"></i>
+                                <input type="number" v-model.number="drawCount" placeholder="抽取人数" min="1">
+                            </div>
+                            <button class="tx-btn tx-btn-primary" @click="startDrawing" :disabled="isRolling">
+                                <i class="fas fa-play"></i>{{ isRolling ? '抽取中...' : '开始抽取' }}
+                            </button>
+                        </div>
+
+                        <div class="control-switches">
+                            <div class="switch-item">
+                                <label class="switch">
+                                    <input type="checkbox" v-model="onlyTop11">
+                                    <span class="slider round"></span>
+                                </label>
+                                <span class="switch-label">仅抽取前11名</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="history-card-container">
+                        <div class="sidebar-card">
+                            <div class="card-title">
+                                <i class="fas fa-history"></i>
+                                <span>抽取记录</span>
+                            </div>
+                            <div class="history-list">
+                                <div v-if="history.length === 0" class="empty-state">
+                                    <i class="fas fa-clock"></i>
+                                    <p>暂无抽取记录</p>
+                                </div>
+                                <div v-else>
+                                    <div v-for="(record, index) in history" :key="index" class="history-item">
+                                        <div class="history-header">
+                                            <div class="history-time"><i class="fas fa-clock"></i>{{ record.time }}</div>
+                                            <span class="history-count">{{ record.count }}人</span>
+                                        </div>
+                                        <div class="history-names">
+                                            <span v-for="(person, pIndex) in record.people" :key="pIndex">
+                                                {{ person.name }}<span v-if="pIndex < record.people.length - 1">, </span>
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-            
-                <!-- Sidebar -->
+
                 <div class="sidebar">
-                
-                <!-- Stats Card -->
-                <div class="sidebar-card">
-                    <div class="card-title">
-                        <i class="mdui-icon material-icons">pie_chart</i>
-                        <span>系统统计</span>
+                    <div class="sidebar-card">
+                        <div class="card-title">
+                            <i class="fas fa-chart-pie"></i>
+                            <span>系统统计</span>
+                        </div>
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-value">{{ students.length }}</div>
+                                <div class="stat-label">学生总数</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value">{{ selectedStudents.length }}</div>
+                                <div class="stat-label">参与抽取</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value">{{ totalDraws }}</div>
+                                <div class="stat-label">总抽取次数</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value">{{ history.length > 0 ? history[0].count : 0 }}</div>
+                                <div class="stat-label">本次抽取</div>
+                            </div>
+                        </div>
+                        <div class="progress-container">
+                            <div class="progress-label">
+                                <span>学生参与比例</span>
+                                <span>{{ Math.round(participationPercentage) }}%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" :style="{ width: participationPercentage + '%' }"></div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="stats-grid">
-                        <div class="stat-card">
-                            <div class="stat-value">{{ students.length }}</div>
-                            <div class="stat-label">学生总数</div>
+
+                    <div class="sidebar-card">
+                        <div class="card-title">
+                            <i class="fas fa-info-circle"></i>
+                            <span>系统说明</span>
                         </div>
-                        <div class="stat-card">
-                            <div class="stat-value">{{ selectedStudents.length }}</div>
-                            <div class="stat-label">参与抽取</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-value">{{ totalDraws }}</div>
-                            <div class="stat-label">总抽取次数</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-value">{{ history.length > 0 ? history[0].count : 0 }}</div>
-                            <div class="stat-label">本次抽取</div>
-                        </div>
-                    </div>
-                    <div class="progress-container">
-                        <div class="progress-label">
-                            <span>学生参与比例</span>
-                            <span>{{ Math.round(participationPercentage) }}%</span>
-                        </div>
-                        <div class="progress-bar">
-                            <div class="progress-fill" :style="{ width: participationPercentage + '%' }"></div>
-                        </div>
+                        <ul class="info-list">
+                            <li class="info-item">
+                                <div class="info-icon"><i class="fas fa-shuffle"></i></div>
+                                <div class="info-text">
+                                    <h4>公平随机</h4>
+                                    <p>使用 Fisher-Yates 洗牌算法确保绝对公平</p>
+                                </div>
+                            </li>
+                            <li class="info-item">
+                                <div class="info-icon"><i class="fas fa-users"></i></div>
+                                <div class="info-text">
+                                    <h4>灵活选择</h4>
+                                    <p>可自定义选择参与抽取的学生</p>
+                                </div>
+                            </li>
+                            <li class="info-item">
+                                <div class="info-icon"><i class="fas fa-history"></i></div>
+                                <div class="info-text">
+                                    <h4>历史记录</h4>
+                                    <p>自动保存最近抽取结果</p>
+                                </div>
+                            </li>
+                        </ul>
                     </div>
                 </div>
-
-                <!-- Info Card -->
-                <div class="sidebar-card">
-                    <div class="card-title">
-                        <i class="mdui-icon material-icons">info</i>
-                        <span>系统说明</span>
-                    </div>
-                    <ul class="info-list">
-                        <li class="info-item">
-                            <div class="info-icon"><i class="material-icons">casino</i></div>
-                            <div class="info-text">
-                                <h4>公平随机</h4>
-                                <p>使用 Fisher-Yates 洗牌算法确保绝对公平</p>
-                            </div>
-                        </li>
-                        <li class="info-item">
-                            <div class="info-icon"><i class="material-icons">people</i></div>
-                            <div class="info-text">
-                                <h4>灵活选择</h4>
-                                <p>可自定义选择参与抽取的学生</p>
-                            </div>
-                        </li>
-                        <li class="info-item">
-                            <div class="info-icon"><i class="material-icons">history</i></div>
-                            <div class="info-text">
-                                <h4>历史记录</h4>
-                                <p>自动保存最近抽取结果</p>
-                            </div>
-                        </li>
-                    </ul>
-                </div>
-
-
             </div>
 
-
-
-            <!-- Footer -->
             <div class="app-footer">
                 <p>随机点名系统 &copy; 2023 392班 | 公平公正的随机算法</p>
                 <p>已抽取 {{ totalDraws }} 次 | 服务 {{ students.length }} 名学生</p>
             </div>
         </div>
 
-        <!-- 学生选择模态窗口 -->
         <div class="student-modal-overlay" v-show="showModal" @click="showModal = false">
             <div class="student-modal" @click.stop>
                 <div class="modal-header">
@@ -233,17 +204,14 @@
                     </div>
                     <div v-else class="student-grid">
                         <div v-for="student in students" :key="student.id"
-                             class="student-card" :class="{ 'selected': isSelected(student), 'jia-card': student.name === '贾烨标' }"
+                             class="student-card" :class="{ 'selected': isSelected(student) }"
                              @click="toggleStudentSelection(student)">
-                            <div class="student-avatar" :class="{ 'top-student': student.rank <= 11, 'jia-avatar': student.name === '贾烨标' }">
+                            <div class="student-avatar" :class="{ 'top-student': student.rank <= 11 }">
                                 {{ student.name.charAt(0) }}
-                                <div v-if="student.rank <= 11" class="crown-icon">
-                                    <i class="fas fa-crown"></i>
-                                </div>
                             </div>
                             <div class="student-info">
                                 <div class="student-name">{{ student.name }}</div>
-                                <div class="student-rank" :class="{ 'jia-rank': student.name === '贾烨标' }">第{{ student.rank }}名</div>
+                                <div class="student-rank">第{{ student.rank }}名</div>
                             </div>
                             <div class="selection-indicator">
                                 <i class="fas fa-check-circle" v-if="isSelected(student)"></i>
@@ -264,7 +232,6 @@
             </div>
         </div>
 
-        <!-- Toast Notification -->
         <div class="toast-container">
             <div v-if="toast.show" class="toast">
                 <strong>{{ toast.title }}</strong>
@@ -273,14 +240,17 @@
         </div>
     </div>
 
-    <!-- 浮动控制按钮组 -->
     <div class="floating-controls">
-        <button class="floating-btn music-btn" @click="toggleMusic" :disabled="isRolling" :title="isMusicPlaying ? '暂停音乐' : '播放音乐'">
-            <i class="fas" :class="isMusicPlaying ? 'fa-pause' : 'fa-music'"></i>
+        <button class="floating-btn music-btn" @click="toggleMusic" :disabled="isRolling || isMusicLoading" 
+                :title="isMusicPlaying ? '暂停音乐' : '播放音乐'">
+            <i class="fas" :class="isMusicLoading ? 'fa-spinner fa-spin' : (isMusicPlaying ? 'fa-pause' : 'fa-music')"></i>
         </button>
         <button class="floating-btn background-btn" id="changeBackgroundBtn" title="切换背景">
             <i class="fas fa-image"></i>
         </button>
     </div>
-  </body>
-  </html>
+
+    <script src="background.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
