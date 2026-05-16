@@ -286,7 +286,8 @@
                     name: name,
                     rank: index + 1,
                     probability: 0,
-                    isSpecial: name === '贾烨标'
+                    isSpecial: name === '贾烨标',
+                    isWebDeveloper: name === '李梦雨'
                 }))
             );
 
@@ -600,11 +601,24 @@
             const isMusicLoading = Vue.ref(false);
             const isMusicLoaded = Vue.ref(false);
             const musicPlayerElement = Vue.ref(null);
+            let audioElement = null;
             
             // 检查音乐播放器是否已存在
             const checkMusicPlayerExists = () => {
                 return document.getElementById('xplayer') !== null || 
-                       document.querySelector('.aplayer') !== null;
+                       document.querySelector('.aplayer') !== null ||
+                       audioElement !== null;
+            };
+            
+            // 创建一个简单的内置音频播放器作为备选方案
+            const createSimpleAudioPlayer = () => {
+                if (!audioElement) {
+                    audioElement = new Audio();
+                    audioElement.src = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
+                    audioElement.loop = true;
+                    audioElement.volume = 0.7;
+                }
+                return audioElement;
             };
             
             // 按需加载音乐播放器脚本
@@ -635,6 +649,17 @@
                     }
                     
                     isMusicLoading.value = true;
+                    
+                    // 首先尝试使用简单的音频播放器
+                    try {
+                        createSimpleAudioPlayer();
+                        isMusicLoading.value = false;
+                        isMusicLoaded.value = true;
+                        resolve();
+                        return;
+                    } catch (e) {
+                        console.log('简单音频播放器创建失败，尝试外部播放器...');
+                    }
                     
                     // 创建音乐播放器容器
                     const playerContainer = document.createElement('div');
@@ -678,7 +703,14 @@
                         if (playerContainer.parentNode) {
                             playerContainer.parentNode.removeChild(playerContainer);
                         }
-                        reject(error || new Error('音乐播放器加载失败'));
+                        // 如果外部播放器加载失败，使用简单音频播放器
+                        try {
+                            createSimpleAudioPlayer();
+                            isMusicLoaded.value = true;
+                            resolve();
+                        } catch (e) {
+                            reject(error || new Error('音乐播放器加载失败'));
+                        }
                     };
                     
                     document.body.appendChild(script);
@@ -699,6 +731,17 @@
                     
                     // 切换播放状态
                     isMusicPlaying.value = !isMusicPlaying.value;
+                    
+                    // 首先尝试控制简单音频播放器
+                    if (audioElement) {
+                        if (isMusicPlaying.value) {
+                            audioElement.play().catch(e => console.log('播放失败:', e));
+                        } else {
+                            audioElement.pause();
+                        }
+                        showToast('提示', isMusicPlaying.value ? '音乐已开始播放' : '音乐已暂停');
+                        return;
+                    }
                     
                     // 尝试控制实际的音乐播放器
                     if (window.APlayer && window.aplayer) {

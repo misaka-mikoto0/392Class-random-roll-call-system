@@ -57,11 +57,15 @@ $(document).ready(function() {
         const url = `https://t.alcy.cc/ys?${timestamp}`;
         
         img.onload = function() {
-            // 图片加载成功后更新背景
+            // 图片加载成功后更新背景，确保完整显示
             document.body.style.backgroundImage = `url(${url})`;
+            document.body.style.backgroundSize = 'cover';
+            document.body.style.backgroundPosition = 'center';
+            document.body.style.backgroundRepeat = 'no-repeat';
+            document.body.style.backgroundAttachment = 'fixed';
             // 添加带背景的类
             document.body.classList.add('with-background');
-                       
+                      
             // 添加到已使用列表
             usedBackgrounds.push(url);
             // 如果列表过长，清理早期的图片

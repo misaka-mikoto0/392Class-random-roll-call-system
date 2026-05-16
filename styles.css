@@ -97,6 +97,10 @@ body {
     line-height: 1.6;
     color: var(--tx-text-primary);
     background: linear-gradient(135deg, var(--tx-bg-secondary) 0%, #FFFFFF 100%);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
     min-height: 100vh;
     overflow-x: hidden;
 }
@@ -275,39 +279,53 @@ body {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: var(--tx-spacing-md) var(--tx-spacing-xl);
+    padding: var(--tx-spacing-lg) var(--tx-spacing-xl);
     background: linear-gradient(135deg, var(--tx-primary) 0%, var(--tx-primary-dark) 100%);
     color: #FFFFFF;
     border-radius: var(--tx-radius-lg);
-    font-weight: 600;
-    font-size: var(--tx-font-size-xl);
-    min-width: 140px;
-    box-shadow: var(--tx-shadow-md);
+    font-weight: 700;
+    font-size: var(--tx-font-size-3xl);
+    min-width: 200px;
+    min-height: 80px;
+    box-shadow: 0 8px 32px rgba(7, 193, 96, 0.4);
     transition: var(--tx-transition);
-    border: 2px solid rgba(255, 255, 255, 0.2);
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    transform: scale(1);
 }
 
 .result-badge:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--tx-shadow-lg);
+    transform: scale(1.05) translateY(-4px);
+    box-shadow: 0 12px 40px rgba(7, 193, 96, 0.5);
 }
 
 /* 金色徽章（前11名） */
 .result-badge.golden {
     background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
-    box-shadow: 0 4px 16px rgba(255, 165, 0, 0.35);
+    box-shadow: 0 8px 32px rgba(255, 165, 0, 0.45);
+}
+
+.result-badge.golden:hover {
+    box-shadow: 0 12px 40px rgba(255, 165, 0, 0.55);
 }
 
 /* 蓝色徽章（其他学生） */
 .result-badge.blue {
     background: linear-gradient(135deg, var(--tx-secondary) 0%, var(--tx-secondary-dark) 100%);
-    box-shadow: 0 4px 16px rgba(20, 123, 255, 0.35);
+    box-shadow: 0 8px 32px rgba(20, 123, 255, 0.45);
+}
+
+.result-badge.blue:hover {
+    box-shadow: 0 12px 40px rgba(20, 123, 255, 0.55);
 }
 
 /* 绿色徽章（贾烨标） */
 .result-badge.special-green {
     background: linear-gradient(135deg, var(--tx-success) 0%, var(--tx-primary-dark) 100%);
-    box-shadow: 0 4px 16px rgba(7, 193, 96, 0.35);
+    box-shadow: 0 8px 32px rgba(7, 193, 96, 0.45);
+}
+
+.result-badge.special-green:hover {
+    box-shadow: 0 12px 40px rgba(7, 193, 96, 0.55);
 }
 
 /* 控制区域 */
@@ -911,6 +929,148 @@ body {
     box-shadow: 0 0 0 3px rgba(7, 193, 96, 0.1);
 }
 
+/* 李梦雨的五彩斑斓的黑卡片样式 */
+.student-card.web-developer {
+    background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    position: relative;
+    overflow: hidden;
+}
+
+.student-card.web-developer::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(45deg, 
+        #ff0080, #ff8c00, #40e0d0, #8a2be2, #ff0080, 
+        #ff8c00, #40e0d0, #8a2be2);
+    background-size: 400% 400%;
+    z-index: -1;
+    border-radius: var(--tx-radius-md);
+    animation: rainbowBorder 3s ease infinite;
+}
+
+@keyframes rainbowBorder {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+
+.student-card.web-developer::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3), transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3), transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(255, 119, 198, 0.2), transparent 50%);
+    pointer-events: none;
+    animation: shimmer 4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; }
+}
+
+.student-card.web-developer .student-name {
+    color: #ffffff;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}
+
+.student-card.web-developer .student-rank {
+    color: #b3b3b3;
+}
+
+.student-card.web-developer:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+/* Web Developer 徽章样式 */
+.web-dev-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 8px;
+    padding: 2px 8px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 600;
+    animation: badgePulse 2s ease-in-out infinite;
+}
+
+@keyframes badgePulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.4); }
+    50% { box-shadow: 0 0 0 4px rgba(102, 126, 234, 0); }
+}
+
+/* 抽奖结果中的Web Developer徽章 */
+.web-dev-mini-badge {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 8px;
+    font-size: 16px;
+    animation: codeIconBounce 1s ease-in-out infinite;
+}
+
+@keyframes codeIconBounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+}
+
+/* 抽奖结果中李梦雨的五彩斑斓的黑样式 */
+.result-badge.web-developer-result {
+    background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%) !important;
+    border: 3px solid transparent;
+    background-clip: padding-box;
+    position: relative;
+    overflow: hidden;
+    color: #ffffff !important;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.7);
+}
+
+.result-badge.web-developer-result::before {
+    content: '';
+    position: absolute;
+    top: -3px;
+    left: -3px;
+    right: -3px;
+    bottom: -3px;
+    background: linear-gradient(45deg, 
+        #ff0080, #ff8c00, #40e0d0, #8a2be2, #ff0080, 
+        #ff8c00, #40e0d0, #8a2be2);
+    background-size: 400% 400%;
+    z-index: -1;
+    border-radius: var(--tx-radius-lg);
+    animation: rainbowBorder 3s ease infinite;
+}
+
+.result-badge.web-developer-result::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at 30% 70%, rgba(120, 119, 198, 0.4), transparent 50%),
+                radial-gradient(circle at 70% 30%, rgba(255, 119, 198, 0.4), transparent 50%);
+    pointer-events: none;
+    animation: shimmer 4s ease-in-out infinite;
+}
+
+.result-badge.web-developer-result:hover {
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6) !important;
+    transform: scale(1.08) translateY(-4px) !important;
+}
+
 .student-avatar {
     width: 48px;
     height: 48px;
@@ -1044,6 +1204,11 @@ body {
     opacity: 0.5;
     cursor: not-allowed;
     transform: none;
+}
+
+.floating-btn i {
+    font-size: 24px;
+    line-height: 1;
 }
 
 .floating-btn .btn-label {

@@ -41,9 +41,13 @@
                                       :class="['result-badge', { 
                                           'golden': student.rank <= 11, 
                                           'special-green': student.isSpecial,
-                                          'blue': student.rank > 11 && !student.isSpecial 
+                                          'web-developer-result': student.isWebDeveloper,
+                                          'blue': student.rank > 11 && !student.isSpecial && !student.isWebDeveloper
                                       }]">
                                     {{ student.name }}
+                                    <span v-if="student.isWebDeveloper" class="web-dev-mini-badge">
+                                        <i class="fas fa-code"></i>
+                                    </span>
                                 </span>
                             </div>
                         </div>
@@ -210,7 +214,10 @@
                     </div>
                     <div v-else class="student-grid">
                         <div v-for="student in students" :key="student.id"
-                             class="student-card" :class="{ 'selected': isSelected(student) }"
+                             class="student-card" :class="{ 
+                                 'selected': isSelected(student),
+                                 'web-developer': student.isWebDeveloper 
+                             }"
                              @click="toggleStudentSelection(student)"
                              :tabindex="0"
                              :aria-selected="isSelected(student)"
@@ -219,7 +226,12 @@
                                 {{ student.name.charAt(0) }}
                             </div>
                             <div class="student-info">
-                                <div class="student-name">{{ student.name }}</div>
+                                <div class="student-name">
+                                    {{ student.name }}
+                                    <span v-if="student.isWebDeveloper" class="web-dev-badge">
+                                        <i class="fas fa-code"></i> Web Developer
+                                    </span>
+                                </div>
                                 <div class="student-rank">第{{ student.rank }}名</div>
                             </div>
                             <div class="selection-indicator">
