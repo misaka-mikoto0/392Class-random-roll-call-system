@@ -52,12 +52,19 @@
             // 计算平均基础权重（用于保底权重计算）
             this.avgBaseWeight = totalBase / this.students.length;
             
+            // 找到排名最前和最后的学生
+            const sortedStudents = [...this.students].sort((a, b) => a.rank - b.rank);
+            const firstStudent = sortedStudents[0];
+            const lastStudent = sortedStudents[sortedStudents.length - 1];
+            const firstWeight = firstStudent ? this.baseWeights[firstStudent.id] : 0;
+            const lastWeight = lastStudent ? this.baseWeights[lastStudent.id] : 0;
+            
             console.log('=== 基础权重预计算结果 ===');
             console.log(`总权重: ${totalBase.toFixed(4)}`);
             console.log(`平均权重: ${this.avgBaseWeight.toFixed(4)}`);
-            console.log(`第1名基础权重: ${this.baseWeights[1].toFixed(4)}`);
-            console.log(`第41名基础权重: ${this.baseWeights[41].toFixed(4)}`);
-            console.log(`权重比例: ${(this.baseWeights[1] / this.baseWeights[41]).toFixed(2)}:1`);
+            if (firstStudent) console.log(`第${firstStudent.rank}名(${firstStudent.name})基础权重: ${firstWeight.toFixed(4)}`);
+            if (lastStudent) console.log(`第${lastStudent.rank}名(${lastStudent.name})基础权重: ${lastWeight.toFixed(4)}`);
+            if (firstWeight && lastWeight) console.log(`权重比例: ${(firstWeight / lastWeight).toFixed(2)}:1`);
         }
         
         /**
@@ -220,14 +227,20 @@
          */
         getStatistics() {
             const { weights, totalWeight } = this.getWeights();
-            const firstProb = weights.find(w => w.student.rank === 1).finalWeight / totalWeight;
-            const lastProb = weights.find(w => w.student.rank === 41).finalWeight / totalWeight;
+            const sortedStudents = [...this.students].sort((a, b) => a.rank - b.rank);
+            const firstStudent = sortedStudents[0];
+            const lastStudent = sortedStudents[sortedStudents.length - 1];
+            
+            const firstWeight = firstStudent ? weights.find(w => w.student.id === firstStudent.id)?.finalWeight || 0 : 0;
+            const lastWeight = lastStudent ? weights.find(w => w.student.id === lastStudent.id)?.finalWeight || 0 : 0;
+            const firstProb = totalWeight > 0 ? firstWeight / totalWeight : 0;
+            const lastProb = totalWeight > 0 ? lastWeight / totalWeight : 0;
             
             return {
                 totalPicks: this.history.length,
                 firstStudentProbability: (firstProb * 100).toFixed(2) + '%',
                 lastStudentProbability: (lastProb * 100).toFixed(2) + '%',
-                probabilityRatio: (firstProb / lastProb).toFixed(2) + ':1',
+                probabilityRatio: lastProb > 0 ? (firstProb / lastProb).toFixed(2) + ':1' : 'N/A',
                 mostPicked: this.getMostPicked(),
                 leastPicked: this.getLeastPicked(),
                 averagePicks: (this.history.length / this.students.length).toFixed(2)
@@ -322,12 +335,15 @@
             // 获取概率分布信息
             const getProbabilityInfo = () => {
                 const probs = rollCallSystem.getProbabilities();
-                const first = probs.find(p => p.rank === 1);
-                const last = probs.find(p => p.rank === 41);
+                const sortedStudents = [...students.value].sort((a, b) => a.rank - b.rank);
+                const firstStudent = sortedStudents[0];
+                const lastStudent = sortedStudents[sortedStudents.length - 1];
+                const first = probs.find(p => p.id === firstStudent?.id);
+                const last = probs.find(p => p.id === lastStudent?.id);
                 return {
                     first: first ? first.probabilityText : '0%',
                     last: last ? last.probabilityText : '0%',
-                    ratio: first && last ? (first.probability / last.probability).toFixed(2) + ':1' : '0:1'
+                    ratio: first && last && last.probability > 0 ? (first.probability / last.probability).toFixed(2) + ':1' : '0:1'
                 };
             };
 
