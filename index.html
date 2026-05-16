@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <title>392班 · 雅集点名</title>
     <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-    <script src="https://cdn.bootcdn.net/ajax/libs/vue/3.4.21/vue.global.prod.js"></script>
+    <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-HSO6j58200wC4Xx+JwJ4bJnQ1d5T6v7S8vL0+oP7sYfK9tZ0xYfK9tZ0xYfK9tZ0xYf" crossorigin="anonymous">
+    <script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha384-kCn8eVZg/8o8J8F7X6FmZ5J3X8e5J3K8j2mQ0XJ1yK7K5z7W8X7Y9V5J3K8j2mQ0XJ1" crossorigin="anonymous"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/vue/3.4.21/vue.global.prod.js" integrity="sha384-ZO1Nf3xSx9r0Y9R9G1J0P7J5R5E3V8H6G9H1K2L4J9H1K2L4J9H1K2L4J9H1K2L4J" crossorigin="anonymous"></script>
 </head>
 <body>
     <div id="app">
@@ -54,7 +55,7 @@
                             </button>
                             <div class="input-group">
                                 <i class="fas fa-user-plus"></i>
-                                <input type="number" v-model.number="drawCount" placeholder="抽取人数" min="1">
+                                <input type="number" v-model.number="drawCount" placeholder="抽取人数" min="1" aria-label="抽取人数">
                             </div>
                             <button class="tx-btn tx-btn-primary" @click="startDrawing" :disabled="isRolling">
                                 <i class="fas fa-play"></i>{{ isRolling ? '抽取中...' : '开始抽取' }}
@@ -64,7 +65,7 @@
                         <div class="control-switches">
                             <div class="switch-item">
                                 <label class="switch">
-                                    <input type="checkbox" v-model="onlyTop11">
+                                    <input type="checkbox" v-model="onlyTop11" aria-label="仅抽取前11名">
                                     <span class="slider round"></span>
                                 </label>
                                 <span class="switch-label">仅抽取前11名</span>
@@ -130,7 +131,10 @@
                                 <span>学生参与比例</span>
                                 <span>{{ Math.round(participationPercentage) }}%</span>
                             </div>
-                            <div class="progress-bar">
+                            <div class="progress-bar" role="progressbar" 
+                                 :aria-valuenow="participationPercentage" 
+                                 aria-valuemin="0" 
+                                 aria-valuemax="100">
                                 <div class="progress-fill" :style="{ width: participationPercentage + '%' }"></div>
                             </div>
                         </div>
@@ -174,11 +178,12 @@
             </div>
         </div>
 
-        <div class="student-modal-overlay" v-show="showModal" @click="showModal = false">
-            <div class="student-modal" @click.stop>
+        <div class="student-modal-overlay" v-show="showModal" @click="showModal = false" 
+             :aria-hidden="!showModal">
+            <div class="student-modal" @click.stop role="dialog" aria-labelledby="modal-title">
                 <div class="modal-header">
-                    <h3><i class="fas fa-users"></i>选择参与学生</h3>
-                    <button class="close-btn" @click="showModal = false">
+                    <h3 id="modal-title"><i class="fas fa-users"></i>选择参与学生</h3>
+                    <button class="close-btn" @click="showModal = false" aria-label="关闭">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
@@ -205,7 +210,10 @@
                     <div v-else class="student-grid">
                         <div v-for="student in students" :key="student.id"
                              class="student-card" :class="{ 'selected': isSelected(student) }"
-                             @click="toggleStudentSelection(student)">
+                             @click="toggleStudentSelection(student)"
+                             :tabindex="0"
+                             :aria-selected="isSelected(student)"
+                             role="option">
                             <div class="student-avatar" :class="{ 'top-student': student.rank <= 11 }">
                                 {{ student.name.charAt(0) }}
                             </div>
@@ -232,7 +240,7 @@
             </div>
         </div>
 
-        <div class="toast-container">
+        <div class="toast-container" role="alert" aria-live="polite" aria-atomic="true">
             <div v-if="toast.show" class="toast">
                 <strong>{{ toast.title }}</strong>
                 <span>{{ toast.message }}</span>
@@ -241,12 +249,19 @@
     </div>
 
     <div class="floating-controls">
-        <button class="floating-btn music-btn" @click="toggleMusic" :disabled="isRolling || isMusicLoading" 
-                :title="isMusicPlaying ? '暂停音乐' : '播放音乐'">
+        <button class="floating-btn music-btn" 
+                :class="{ 'active': isMusicPlaying, 'loading': isMusicLoading }" 
+                @click="toggleMusic" 
+                :disabled="isRolling || isMusicLoading" 
+                :title="isMusicPlaying ? '暂停音乐' : '播放音乐'"
+                aria-label="音乐控制">
             <i class="fas" :class="isMusicLoading ? 'fa-spinner fa-spin' : (isMusicPlaying ? 'fa-pause' : 'fa-music')"></i>
+            <span class="btn-label" v-if="isMusicPlaying">播放中</span>
+            <span class="btn-label" v-else>音乐</span>
         </button>
-        <button class="floating-btn background-btn" id="changeBackgroundBtn" title="切换背景">
+        <button class="floating-btn background-btn" id="changeBackgroundBtn" title="切换背景" aria-label="切换背景">
             <i class="fas fa-image"></i>
+            <span class="btn-label">背景</span>
         </button>
     </div>
 

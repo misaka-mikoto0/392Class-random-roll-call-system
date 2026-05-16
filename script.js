@@ -367,14 +367,24 @@
             // 音乐播放器加载状态
             const isMusicLoading = Vue.ref(false);
             const isMusicLoaded = Vue.ref(false);
+            const musicPlayerElement = Vue.ref(null);
+            
+            // 检查音乐播放器是否已存在
+            const checkMusicPlayerExists = () => {
+                return document.getElementById('xplayer') !== null || 
+                       document.querySelector('.aplayer') !== null;
+            };
             
             // 按需加载音乐播放器脚本
             const loadMusicPlayerAsync = async () => {
                 return new Promise((resolve, reject) => {
+                    // 检查是否已加载
                     if (isMusicLoaded.value) {
                         resolve();
                         return;
                     }
+                    
+                    // 检查是否正在加载
                     if (isMusicLoading.value) {
                         const checkLoaded = setInterval(() => {
                             if (isMusicLoaded.value) {
@@ -385,7 +395,25 @@
                         return;
                     }
                     
+                    // 检查是否已存在播放器元素
+                    if (checkMusicPlayerExists()) {
+                        isMusicLoaded.value = true;
+                        resolve();
+                        return;
+                    }
+                    
                     isMusicLoading.value = true;
+                    
+                    // 创建音乐播放器容器
+                    const playerContainer = document.createElement('div');
+                    playerContainer.id = 'xplayer-container';
+                    playerContainer.style.position = 'fixed';
+                    playerContainer.style.bottom = '80px';
+                    playerContainer.style.left = '20px';
+                    playerContainer.style.zIndex = '100';
+                    document.body.appendChild(playerContainer);
+                    
+                    // 创建脚本元素
                     const script = document.createElement('script');
                     script.id = 'xplayer';
                     script.src = 'https://y.cenguigui.cn/Static/player12/js/player.js';
@@ -393,15 +421,34 @@
                     script.setAttribute('api', 'https://y.cenguigui.cn/');
                     script.setAttribute('m', '1');
                     
+                    // 设置超时
+                    const timeout = setTimeout(() => {
+                        script.onerror?.(new Error('加载超时'));
+                    }, 10000);
+                    
                     script.onload = () => {
+                        clearTimeout(timeout);
                         isMusicLoading.value = false;
                         isMusicLoaded.value = true;
+                        setTimeout(() => {
+                            musicPlayerElement.value = document.querySelector('.aplayer');
+                            if (musicPlayerElement.value) {
+                                musicPlayerElement.value.style.width = '300px';
+                            }
+                        }, 500);
                         resolve();
                     };
+                    
                     script.onerror = (error) => {
+                        clearTimeout(timeout);
                         isMusicLoading.value = false;
-                        reject(error);
+                        // 清理容器
+                        if (playerContainer.parentNode) {
+                            playerContainer.parentNode.removeChild(playerContainer);
+                        }
+                        reject(error || new Error('音乐播放器加载失败'));
                     };
+                    
                     document.body.appendChild(script);
                 });
             };
@@ -409,16 +456,36 @@
             // 切换音乐播放状态
             const toggleMusic = async () => {
                 if (isRolling.value) return;
+                
                 try {
+                    // 如果音乐播放器未加载，则先加载
                     if (!isMusicLoaded.value) {
                         showToast('加载中', '正在加载音乐播放器...');
                         await loadMusicPlayerAsync();
+                        showToast('成功', '音乐播放器加载完成');
                     }
+                    
+                    // 切换播放状态
                     isMusicPlaying.value = !isMusicPlaying.value;
-                    showToast('提示', isMusicPlaying.value ? '音乐播放器已启用' : '音乐播放器已暂停');
+                    
+                    // 尝试控制实际的音乐播放器
+                    if (window.APlayer && window.aplayer) {
+                        const ap = window.aplayer;
+                        if (ap.list && ap.list.audios && ap.list.audios.length > 0) {
+                            if (isMusicPlaying.value) {
+                                ap.play();
+                            } else {
+                                ap.pause();
+                            }
+                        }
+                    }
+                    
+                    showToast('提示', isMusicPlaying.value ? '音乐已开始播放' : '音乐已暂停');
+                    
                 } catch (error) {
-                    console.error('音乐播放器加载失败:', error);
-                    showToast('错误', '音乐播放器加载失败，请稍后重试');
+                    console.error('音乐播放器操作失败:', error);
+                    isMusicPlaying.value = false;
+                    showToast('错误', '音乐播放器加载失败，请检查网络或稍后重试');
                 }
             };
 
