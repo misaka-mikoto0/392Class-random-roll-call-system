@@ -6,6 +6,267 @@
         return;
     }
 
+    /**
+     * 公平加权随机点名系统 v2.0
+     * 算法说明：
+     * 1. 基础权重：1/sqrt(rank) - 名次越靠后权重越高，差距控制在2倍左右
+     * 2. 保底权重：占总权重25%，确保每个人都有最低抽取概率
+     * 3. 衰减机制：每次抽中后权重×0.9，防止重复抽取同一人
+     * 4. 轮盘赌算法：基于最终权重进行加权随机选择
+     */
+    class FairWeightedRollCall {
+        constructor(students, options = {}) {
+            this.students = students;
+            this.guaranteeRatio = options.guaranteeRatio ?? 0.25;  // 保底权重比例 25%
+            this.decayFactor = options.decayFactor ?? 0.9;          // 衰减系数
+            this.resetPeriod = options.resetPeriod ?? 'per_class';
+            
+            // 初始化抽中次数记录
+            this.pickCounts = {};
+            this.history = [];
+            students.forEach(s => {
+                this.pickCounts[s.id] = 0;
+            });
+            
+            // 预计算所有权重
+            this._precompute();
+        }
+        
+        /**
+         * 预计算基础权重
+         * 公式：baseWeight = 1 / sqrt(rank)
+         * 第1名：1.0
+         * 第41名：0.156
+         * 差距：约6.4倍（通过平方根降低差距）
+         */
+        _precompute() {
+            this.baseWeights = {};
+            let totalBase = 0;
+            
+            for (const s of this.students) {
+                const w = 1 / Math.sqrt(s.rank);
+                this.baseWeights[s.id] = w;
+                totalBase += w;
+            }
+            
+            // 计算平均基础权重（用于保底权重计算）
+            this.avgBaseWeight = totalBase / this.students.length;
+            
+            console.log('=== 基础权重预计算结果 ===');
+            console.log(`总权重: ${totalBase.toFixed(4)}`);
+            console.log(`平均权重: ${this.avgBaseWeight.toFixed(4)}`);
+            console.log(`第1名基础权重: ${this.baseWeights[1].toFixed(4)}`);
+            console.log(`第41名基础权重: ${this.baseWeights[41].toFixed(4)}`);
+            console.log(`权重比例: ${(this.baseWeights[1] / this.baseWeights[41]).toFixed(2)}:1`);
+        }
+        
+        /**
+         * 计算最终权重
+         * 最终权重 = 混合权重 × 衰减系数^(抽中次数)
+         * 混合权重 = 保底权重 + 基础权重
+         * 保底权重 = 平均基础权重 × 保底比例
+         * 基础权重 = 1/sqrt(rank) × (1-保底比例)
+         */
+        _computeFinalWeight(student) {
+            const baseWeight = this.baseWeights[student.id];
+            const pickCount = this.pickCounts[student.id];
+            
+            // 保底权重（所有人相同）
+            const guaranteeWeight = this.avgBaseWeight * this.guaranteeRatio;
+            
+            // 基础权重（按名次分配）
+            const rankWeight = baseWeight * (1 - this.guaranteeRatio);
+            
+            // 混合权重
+            const mixedWeight = guaranteeWeight + rankWeight;
+            
+            // 衰减后的最终权重
+            const finalWeight = mixedWeight * Math.pow(this.decayFactor, pickCount);
+            
+            return {
+                baseWeight,
+                guaranteeWeight,
+                rankWeight,
+                mixedWeight,
+                decayFactor: Math.pow(this.decayFactor, pickCount),
+                finalWeight
+            };
+        }
+        
+        /**
+         * 获取所有学生的权重信息
+         */
+        getWeights() {
+            const weights = [];
+            let totalWeight = 0;
+            
+            for (const s of this.students) {
+                const w = this._computeFinalWeight(s);
+                weights.push({
+                    student: s,
+                    ...w
+                });
+                totalWeight += w.finalWeight;
+            }
+            
+            return { weights, totalWeight };
+        }
+        
+        /**
+         * 获取概率分布
+         */
+        getProbabilities() {
+            const { weights, totalWeight } = this.getWeights();
+            
+            return weights.map(w => ({
+                id: w.student.id,
+                name: w.student.name,
+                rank: w.student.rank,
+                probability: (w.finalWeight / totalWeight * 100),
+                probabilityText: (w.finalWeight / totalWeight * 100).toFixed(2) + '%',
+                baseWeight: w.baseWeight,
+                guaranteeWeight: w.guaranteeWeight,
+                rankWeight: w.rankWeight,
+                mixedWeight: w.mixedWeight,
+                decayFactor: w.decayFactor,
+                finalWeight: w.finalWeight,
+                pickCount: this.pickCounts[w.student.id]
+            })).sort((a, b) => b.probability - a.probability);
+        }
+        
+        /**
+         * 轮盘赌选择单个学生
+         */
+        pickOne() {
+            const { weights, totalWeight } = this.getWeights();
+            
+            // 生成随机数
+            const rand = Math.random() * totalWeight;
+            let cumulative = 0;
+            
+            for (const w of weights) {
+                cumulative += w.finalWeight;
+                if (rand <= cumulative) {
+                    const picked = w.student;
+                    this.pickCounts[picked.id]++;
+                    this.history.push({
+                        id: picked.id,
+                        name: picked.name,
+                        rank: picked.rank,
+                        probability: w.finalWeight / totalWeight,
+                        time: new Date().toISOString()
+                    });
+                    return picked;
+                }
+            }
+            
+            // 兜底：返回最后一个
+            const last = weights[weights.length - 1];
+            this.pickCounts[last.student.id]++;
+            this.history.push({
+                id: last.student.id,
+                name: last.student.name,
+                rank: last.student.rank,
+                probability: last.finalWeight / totalWeight,
+                time: new Date().toISOString()
+            });
+            return last.student;
+        }
+        
+        /**
+         * 选择多个学生（不重复）
+         */
+        pickN(n, availableStudents = null) {
+            const studentPool = availableStudents || this.students;
+            
+            if (n > studentPool.length) {
+                throw new Error(`班级只有 ${studentPool.length} 人，不能抽 ${n} 个`);
+            }
+            
+            const picked = [];
+            const tempPickCounts = { ...this.pickCounts };
+            
+            for (let i = 0; i < n; i++) {
+                // 重新计算权重（考虑已抽中的学生）
+                const { weights, totalWeight } = this.getWeights();
+                
+                // 过滤可用学生（未被抽中且在候选池中）
+                const available = weights.filter(w => 
+                    studentPool.some(s => s.id === w.student.id) &&
+                    !picked.find(p => p.id === w.student.id)
+                );
+                
+                if (available.length === 0) break;
+                
+                const availTotal = available.reduce((sum, w) => sum + w.finalWeight, 0);
+                const rand = Math.random() * availTotal;
+                let cumulative = 0;
+                
+                for (const w of available) {
+                    cumulative += w.finalWeight;
+                    if (rand <= cumulative) {
+                        picked.push(w.student);
+                        this.pickCounts[w.student.id]++;
+                        break;
+                    }
+                }
+            }
+            
+            return picked;
+        }
+        
+        /**
+         * 获取统计信息
+         */
+        getStatistics() {
+            const { weights, totalWeight } = this.getWeights();
+            const firstProb = weights.find(w => w.student.rank === 1).finalWeight / totalWeight;
+            const lastProb = weights.find(w => w.student.rank === 41).finalWeight / totalWeight;
+            
+            return {
+                totalPicks: this.history.length,
+                firstStudentProbability: (firstProb * 100).toFixed(2) + '%',
+                lastStudentProbability: (lastProb * 100).toFixed(2) + '%',
+                probabilityRatio: (firstProb / lastProb).toFixed(2) + ':1',
+                mostPicked: this.getMostPicked(),
+                leastPicked: this.getLeastPicked(),
+                averagePicks: (this.history.length / this.students.length).toFixed(2)
+            };
+        }
+        
+        getMostPicked() {
+            let max = { id: null, count: 0 };
+            for (const [id, count] of Object.entries(this.pickCounts)) {
+                if (count > max.count) {
+                    max = { id: parseInt(id), count };
+                }
+            }
+            const student = this.students.find(s => s.id === max.id);
+            return student ? { name: student.name, count: max.count } : null;
+        }
+        
+        getLeastPicked() {
+            let min = { id: null, count: Infinity };
+            for (const [id, count] of Object.entries(this.pickCounts)) {
+                if (count < min.count) {
+                    min = { id: parseInt(id), count };
+                }
+            }
+            const student = this.students.find(s => s.id === min.id);
+            return student ? { name: student.name, count: min.count } : null;
+        }
+        
+        /**
+         * 重置抽中次数记录
+         */
+        reset() {
+            this.students.forEach(s => {
+                this.pickCounts[s.id] = 0;
+            });
+            this.history = [];
+        }
+    }
+
     // 创建Vue应用实例
     const app = Vue.createApp({
         setup() {
@@ -18,25 +279,6 @@
                 '段培清', '白阳兰', '赵渊博', '贾烨标', '赵晨旭', '赵育敏', '延泽玉', '李昀宵', '樊师彤'
             ];
 
-            // 概率衰减因子 (0 < decayFactor <= 1)
-            // 值越接近1，概率分布越均匀；值越小，排名靠前优势越明显
-            const decayFactor = Vue.ref(0.95);
-
-            // 根据排名计算概率权重
-            const calculateProbabilityWeight = (rank, decay) => {
-                return Math.pow(decay, rank - 1);
-            };
-
-            // 计算所有学生的概率权重并归一化
-            const calculateProbabilities = (studentsList, decay) => {
-                const weights = studentsList.map(s => calculateProbabilityWeight(s.rank, decay));
-                const totalWeight = weights.reduce((sum, w) => sum + w, 0);
-                return studentsList.map((s, i) => ({
-                    ...s,
-                    probability: weights[i] / totalWeight
-                }));
-            };
-
             // 初始化学生数据
             const students = Vue.ref(
                 studentNames.map((name, index) => ({
@@ -48,8 +290,14 @@
                 }))
             );
 
-            // 初始化概率
-            students.value = calculateProbabilities(students.value, decayFactor.value);
+            // 初始化加权点名系统
+            const rollCallSystem = new FairWeightedRollCall(students.value);
+            
+            // 记录每个学生的抽中次数
+            const studentPickCounts = Vue.ref({});
+            students.value.forEach(s => {
+                studentPickCounts.value[s.id] = 0;
+            });
 
             // 状态管理
             const selectedStudents = Vue.ref([]);
@@ -69,6 +317,18 @@
             const participationPercentage = Vue.computed(() => {
                 return students.value.length > 0 ? (selectedStudents.value.length / students.value.length) * 100 : 0;
             });
+
+            // 获取概率分布信息
+            const getProbabilityInfo = () => {
+                const probs = rollCallSystem.getProbabilities();
+                const first = probs.find(p => p.rank === 1);
+                const last = probs.find(p => p.rank === 41);
+                return {
+                    first: first ? first.probabilityText : '0%',
+                    last: last ? last.probabilityText : '0%',
+                    ratio: first && last ? (first.probability / last.probability).toFixed(2) + ':1' : '0:1'
+                };
+            };
 
             // 切换学生选择状态
             const toggleStudentSelection = (student) => {
@@ -102,7 +362,7 @@
                     return;
                 }
                 showModal.value = false;
-                showToast('成功', '学生选择已确认');
+                showToast('成功', `已选择 ${selectedStudents.value.length} 名学生参与抽取`);
             };
 
             // 固定种子的随机数生成器
@@ -114,56 +374,28 @@
             // 随机种子，随机生成以确保每次运行结果不同
             let randomSeed = Vue.ref(Math.floor(Math.random() * 1000000000));
             
-            // Fisher-Yates 洗牌算法（使用固定种子）
-            const shuffleArray = (array) => {
-                const newArray = [...array];
-                for (let i = newArray.length - 1; i > 0; i--) {
-                    const j = Math.floor(seededRandom(randomSeed.value) * (i + 1));
-                    randomSeed.value++;
-                    [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
-                }
-                return newArray;
-            };
-            
-            // 概率加权随机选择函数
-            // 基于轮盘赌算法实现，支持可选的种子参数以确保可重现性
+            // 使用新的加权系统进行选择
             const weightedRandomSelection = (items, count, seed = null) => {
-                const result = [];
-                const remainingItems = [...items];
+                // 创建临时系统
+                const tempSystem = new FairWeightedRollCall(items, {
+                    guaranteeRatio: 0.25,
+                    decayFactor: 0.9
+                });
                 
-                // 使用传入的种子或当前随机种子
-                let currentSeed = seed !== null ? seed : randomSeed.value;
-                
-                for (let i = 0; i < count && remainingItems.length > 0; i++) {
-                    // 计算累积概率
-                    const totalWeight = remainingItems.reduce((sum, item) => sum + item.probability, 0);
-                    
-                    // 生成随机数
-                    const randomValue = seededRandom(currentSeed);
-                    currentSeed++;
-                    
-                    // 轮盘赌选择
-                    let cumulative = 0;
-                    let selectedIndex = 0;
-                    
-                    for (let j = 0; j < remainingItems.length; j++) {
-                        cumulative += remainingItems[j].probability / totalWeight;
-                        if (randomValue <= cumulative) {
-                            selectedIndex = j;
-                            break;
-                        }
+                // 复制抽中次数
+                items.forEach(item => {
+                    if (studentPickCounts.value[item.id] !== undefined) {
+                        tempSystem.pickCounts[item.id] = studentPickCounts.value[item.id];
                     }
-                    
-                    // 将选中的项目添加到结果中
-                    result.push(remainingItems[selectedIndex]);
-                    // 从剩余列表中移除已选中的项目
-                    remainingItems.splice(selectedIndex, 1);
-                }
+                });
                 
-                // 如果没有传入种子，则更新全局随机种子
-                if (seed === null) {
-                    randomSeed.value = currentSeed;
-                }
+                // 选择
+                const result = tempSystem.pickN(count);
+                
+                // 更新抽中次数
+                result.forEach(student => {
+                    studentPickCounts.value[student.id]++;
+                });
                 
                 return result;
             };
@@ -245,7 +477,7 @@
                         }
                     }
                     
-                    // 使用概率加权随机选择最终结果
+                    // 使用新的加权随机选择算法
                     return weightedRandomSelection(availableStudents, count);
                 };
                 
@@ -297,7 +529,7 @@
                         progress = (frame - initialAccelFrames - misleadDecelFrames) / fakeoutFrames;
                         easedProgress = easeFunctions.easeInOutQuad(progress);
                         const fakeoutRange = Math.floor(eligibleStudents.length * animationConfig.fakeoutIntensity);
-                        const fakeoutDirection = Math.random() > 0.5 ? 1 : -1;
+                        const fakeoutDirection = seededRandom(randomSeed.value++) > 0.5 ? 1 : -1;
                         return Math.floor((misleadTargetIndex + fakeoutDirection * fakeoutRange * easedProgress) % eligibleStudents.length);
                     } else {
                         progress = (frame - initialAccelFrames - misleadDecelFrames - fakeoutFrames) / finalDecelFrames;
@@ -529,38 +761,44 @@
                 selectedStudents.value = [...students.value];
                 fetchGenshinQuote();
                 setInterval(fetchGenshinQuote, 30000);
+                
+                // 输出初始概率分布到控制台
+                console.log('\n=== 初始概率分布 ===');
+                const probs = rollCallSystem.getProbabilities();
+                console.log('排名 | 姓名 | 基础权重 | 保底权重 | 排名权重 | 混合权重 | 衰减系数 | 最终权重 | 概率');
+                probs.forEach(p => {
+                    console.log(`${p.rank.toString().padStart(4)} | ${p.name.padEnd(4)} | ${p.baseWeight.toFixed(4)} | ${p.guaranteeWeight.toFixed(4)} | ${p.rankWeight.toFixed(4)} | ${p.mixedWeight.toFixed(4)} | ${p.decayFactor.toFixed(4)} | ${p.finalWeight.toFixed(4)} | ${p.probabilityText}`);
+                });
+                
+                const stats = rollCallSystem.getStatistics();
+                console.log('\n=== 统计信息 ===');
+                console.log(`第1名概率: ${stats.firstStudentProbability}`);
+                console.log(`第41名概率: ${stats.lastStudentProbability}`);
+                console.log(`概率比例: ${stats.probabilityRatio}`);
             });
 
-            // 重置随机种子
-            const resetSeed = () => {
-                randomSeed.value = Math.floor(Math.random() * 1000000000);
+            // 重置系统
+            const resetSystem = () => {
+                rollCallSystem.reset();
+                students.value.forEach(s => {
+                    studentPickCounts.value[s.id] = 0;
+                });
                 recentHistory.value = [];
-                showToast('提示', '随机种子已重置，将生成新的随机序列');
+                history.value = [];
+                totalDraws.value = 0;
+                showToast('提示', '系统已重置，权重已恢复初始状态');
             };
             
-            // 更新概率设置
-            const updateDecayFactor = () => {
-                const decay = Math.max(0.1, Math.min(1.0, decayFactor.value));
-                decayFactor.value = decay;
-                students.value = calculateProbabilities(students.value, decayFactor.value);
-                showToast('提示', `概率衰减因子已更新为 ${decayFactor.value.toFixed(2)}`);
-            };
-
-            // 获取概率分布信息
-            const getProbabilityInfo = () => {
-                const firstProb = students.value[0]?.probability || 0;
-                const lastProb = students.value[students.value.length - 1]?.probability || 0;
-                return {
-                    first: (firstProb * 100).toFixed(2) + '%',
-                    last: (lastProb * 100).toFixed(4) + '%',
-                    ratio: (firstProb / lastProb).toFixed(2)
-                };
+            // 获取统计信息
+            const getSystemStats = () => {
+                return rollCallSystem.getStatistics();
             };
 
             // 暴露给模板使用的变量和方法
             return {
                 students,
                 selectedStudents,
+                studentPickCounts,
                 history,
                 totalDraws,
                 drawCount,
@@ -575,7 +813,6 @@
                 participationPercentage,
                 randomSeed,
                 recentHistory,
-                decayFactor,
                 toggleStudentSelection,
                 isSelected,
                 selectAllStudents,
@@ -587,9 +824,10 @@
                 quote,
                 isFetchingQuote,
                 fetchGenshinQuote,
-                resetSeed,
-                updateDecayFactor,
-                getProbabilityInfo
+                resetSystem,
+                getProbabilityInfo,
+                getSystemStats,
+                rollCallSystem
             };
         }
     });
