@@ -30,25 +30,36 @@
                 <div class="main-content">
                     <div class="result-display">
                         <div v-if="!currentResult.length" class="placeholder-text">
-                            <i class="fas fa-random"></i>
+                            <div class="placeholder-icon">
+                                <i class="fas fa-dice"></i>
+                            </div>
                             <p>点击下方按钮开始抽取</p>
                             <p>系统将公平随机选择学生</p>
                         </div>
-                        <div v-else>
-                            <div class="result-title">抽取结果</div>
+                        <div v-else class="result-container">
+                            <div class="result-header">
+                                <div class="result-title">抽取结果</div>
+                                <div class="result-count">共 {{ currentResult.length }} 人</div>
+                            </div>
                             <div class="result-names">
-                                <span v-for="(student, index) in currentResult" :key="index" 
-                                      :class="['result-badge', { 
-                                          'golden': student.rank <= 11, 
-                                          'special-green': student.isSpecial,
-                                          'web-developer-result': student.isWebDeveloper,
-                                          'blue': student.rank > 11 && !student.isSpecial && !student.isWebDeveloper
-                                      }]">
-                                    {{ student.name }}
-                                    <span v-if="student.isWebDeveloper" class="web-dev-mini-badge">
-                                        <i class="fas fa-code"></i>
+                                <div v-for="(student, index) in currentResult" :key="index" 
+                                      :class="['result-badge-wrapper', { 'animate-in': true }]" 
+                                      :style="{ animationDelay: (index * 0.15) + 's' }">
+                                    <span :class="['result-badge', { 
+                                        'golden': student.rank <= 11, 
+                                        'special-green': student.isSpecial,
+                                        'web-developer-result': student.isWebDeveloper,
+                                        'blue': student.rank > 11 && !student.isSpecial && !student.isWebDeveloper
+                                    }]">
+                                        <span class="badge-content">
+                                            <span class="badge-name">{{ student.name }}</span>
+                                            <span v-if="student.isWebDeveloper" class="web-dev-mini-badge">
+                                                <i class="fas fa-code"></i>
+                                            </span>
+                                        </span>
+                                        <span class="badge-rank">第{{ student.rank }}名</span>
                                     </span>
-                                </span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -259,23 +270,23 @@
                 <span>{{ toast.message }}</span>
             </div>
         </div>
-    </div>
 
-    <div class="floating-controls">
-        <button class="floating-btn music-btn" 
-                :class="{ 'active': isMusicPlaying, 'loading': isMusicLoading }" 
-                @click="toggleMusic" 
-                :disabled="isRolling || isMusicLoading" 
-                :title="isMusicPlaying ? '暂停音乐' : '播放音乐'"
-                aria-label="音乐控制">
-            <i class="fas" :class="isMusicLoading ? 'fa-spinner fa-spin' : (isMusicPlaying ? 'fa-pause' : 'fa-music')"></i>
-            <span class="btn-label" v-if="isMusicPlaying">播放中</span>
-            <span class="btn-label" v-else>音乐</span>
-        </button>
-        <button class="floating-btn background-btn" id="changeBackgroundBtn" title="切换背景" aria-label="切换背景">
-            <i class="fas fa-image"></i>
-            <span class="btn-label">背景</span>
-        </button>
+        <div class="floating-controls">
+            <button class="floating-btn music-btn" 
+                    :class="{ 'active': isMusicPlaying, 'loading': isMusicLoading }" 
+                    @click="toggleMusic" 
+                    :disabled="isRolling || isMusicLoading" 
+                    :title="isMusicPlaying ? '暂停音乐' : '播放音乐'"
+                    aria-label="音乐控制">
+                <i class="fas" :class="isMusicLoading ? 'fa-spinner fa-spin' : (isMusicPlaying ? 'fa-pause' : 'fa-music')"></i>
+                <span class="btn-label" v-if="isMusicPlaying">播放中</span>
+                <span class="btn-label" v-else>音乐</span>
+            </button>
+            <button class="floating-btn background-btn" id="changeBackgroundBtn" title="切换背景" aria-label="切换背景">
+                <i class="fas fa-image"></i>
+                <span class="btn-label">背景</span>
+            </button>
+        </div>
     </div>
 
     <script src="background.js"></script>

@@ -733,45 +733,99 @@
                 });
             };
             
+            // 动态加载jQuery
+            const loadJQuery = () => {
+                return new Promise((resolve, reject) => {
+                    if (window.jQuery) {
+                        resolve(window.jQuery);
+                        return;
+                    }
+                    
+                    const script = document.createElement('script');
+                    script.src = 'https://cdn.staticfile.net/jquery/3.5.1/jquery.min.js';
+                    script.onload = () => resolve(window.jQuery);
+                    script.onerror = () => reject(new Error('jQuery加载失败'));
+                    document.head.appendChild(script);
+                });
+            };
+            
+            // 动态加载Font-Awesome CSS
+            const loadFontAwesome = () => {
+                return new Promise((resolve, reject) => {
+                    const existingLink = document.getElementById('font-awesome-css');
+                    if (existingLink) {
+                        resolve();
+                        return;
+                    }
+                    
+                    const link = document.createElement('link');
+                    link.id = 'font-awesome-css';
+                    link.rel = 'stylesheet';
+                    link.type = 'text/css';
+                    link.href = 'https://cdn.staticfile.net/font-awesome/4.7.0/css/font-awesome.min.css';
+                    link.onload = () => resolve();
+                    link.onerror = () => reject(new Error('Font-Awesome加载失败'));
+                    document.head.appendChild(link);
+                });
+            };
+            
+            // 创建音乐容器
+            const createMusicContainer = () => {
+                let container = document.getElementById('music');
+                if (!container) {
+                    container = document.createElement('div');
+                    container.id = 'music';
+                    container.setAttribute('key', '68397e7621e83');
+                    container.setAttribute('api', 'https://y.cenguigui.cn/');
+                    document.body.appendChild(container);
+                }
+                return container;
+            };
+            
+            // 动态加载音乐播放器脚本
+            const loadMusicPlayer = () => {
+                return new Promise((resolve, reject) => {
+                    const existingScript = document.getElementById('xplayer');
+                    if (existingScript) {
+                        resolve();
+                        return;
+                    }
+                    
+                    const script = document.createElement('script');
+                    script.id = 'xplayer';
+                    script.src = 'https://y.cenguigui.cn/Static/player15/js/player.js';
+                    script.onload = () => resolve();
+                    script.onerror = () => reject(new Error('音乐播放器加载失败'));
+                    document.body.appendChild(script);
+                });
+            };
+            
             // 切换音乐播放状态
             const toggleMusic = async () => {
                 if (isRolling.value) return;
                 
                 try {
-                    // 如果音乐播放器未加载，则先加载
-                    if (!isMusicLoaded.value) {
-                        showToast('加载中', '正在加载音乐播放器...');
-                        await loadMusicPlayerAsync();
-                        showToast('成功', '音乐播放器加载完成');
-                    }
-                    
-                    // 切换播放状态
                     isMusicPlaying.value = !isMusicPlaying.value;
                     
-                    // 首先尝试控制简单音频播放器
-                    if (audioElement) {
-                        if (isMusicPlaying.value) {
-                            audioElement.play().catch(e => console.log('播放失败:', e));
-                        } else {
-                            audioElement.pause();
-                        }
-                        showToast('提示', isMusicPlaying.value ? '音乐已开始播放' : '音乐已暂停');
-                        return;
+                    // 如果是开启播放，则加载音乐播放器
+                    if (isMusicPlaying.value) {
+                        showToast('加载中', '正在加载音乐播放器...');
+                        
+                        // 按顺序加载所需资源
+                        await loadJQuery();
+                        await loadFontAwesome();
+                        createMusicContainer();
+                        await loadMusicPlayer();
+                        
+                        // 等待播放器初始化
+                        setTimeout(() => {
+                            isMusicLoaded.value = true;
+                            showToast('成功', '音乐播放器加载完成');
+                        }, 1000);
+                    } else {
+                        // 暂停时不需要卸载播放器
+                        showToast('提示', '音乐已暂停');
                     }
-                    
-                    // 尝试控制实际的音乐播放器
-                    if (window.APlayer && window.aplayer) {
-                        const ap = window.aplayer;
-                        if (ap.list && ap.list.audios && ap.list.audios.length > 0) {
-                            if (isMusicPlaying.value) {
-                                ap.play();
-                            } else {
-                                ap.pause();
-                            }
-                        }
-                    }
-                    
-                    showToast('提示', isMusicPlaying.value ? '音乐已开始播放' : '音乐已暂停');
                     
                 } catch (error) {
                     console.error('音乐播放器操作失败:', error);
