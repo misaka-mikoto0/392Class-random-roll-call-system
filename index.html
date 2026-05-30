@@ -30,36 +30,37 @@
                 <div class="main-content">
                     <div class="result-display">
                         <div v-if="!currentResult.length" class="placeholder-text">
-                            <div class="placeholder-icon">
-                                <i class="fas fa-dice"></i>
-                            </div>
+                            <i class="fas fa-random"></i>
                             <p>点击下方按钮开始抽取</p>
                             <p>系统将公平随机选择学生</p>
                         </div>
-                        <div v-else class="result-container">
-                            <div class="result-header">
-                                <div class="result-title">抽取结果</div>
-                                <div class="result-count">共 {{ currentResult.length }} 人</div>
-                            </div>
+                        <div v-else>
+                            <div class="result-title">抽取结果</div>
                             <div class="result-names">
-                                <div v-for="(student, index) in currentResult" :key="index" 
-                                      :class="['result-badge-wrapper', { 'animate-in': true }]" 
-                                      :style="{ animationDelay: (index * 0.15) + 's' }">
-                                    <span :class="['result-badge', { 
-                                        'golden': student.rank <= 11, 
-                                        'special-green': student.isSpecial,
-                                        'web-developer-result': student.isWebDeveloper,
-                                        'blue': student.rank > 11 && !student.isSpecial && !student.isWebDeveloper
-                                    }]">
-                                        <span class="badge-content">
-                                            <span class="badge-name">{{ student.name }}</span>
-                                            <span v-if="student.isWebDeveloper" class="web-dev-mini-badge">
-                                                <i class="fas fa-code"></i>
-                                            </span>
-                                        </span>
-                                        <span class="badge-rank">第{{ student.rank }}名</span>
+                                <span v-for="(student, index) in currentResult" :key="index" 
+                                      :class="['result-badge', { 
+                                          'golden': student.rank <= 11, 
+                                          'special-green': student.isSpecial,
+                                          'web-developer-result': student.isWebDeveloper,
+                                          'cloud-shaped': student.isCloudShaped,
+                                          'wang-henning': student.isWangHenning,
+                                          'blue': student.rank > 11 && !student.isSpecial && !student.isWebDeveloper && !student.isCloudShaped && !student.isWangHenning
+                                      }]">
+                                    <div v-if="student.isCloudShaped" class="cloud-container">
+                                        <div class="cloud-circle c1"></div><div class="cloud-circle c2"></div><div class="cloud-circle c3"></div><div class="cloud-circle c4"></div><div class="cloud-circle c5"></div>
+                                        <div class="cloud-circle c6"></div><div class="cloud-circle c7"></div><div class="cloud-circle c8"></div><div class="cloud-circle c9"></div><div class="cloud-circle c10"></div>
+                                        <div class="cloud-circle c11"></div><div class="cloud-circle c12"></div><div class="cloud-circle c13"></div><div class="cloud-circle c14"></div><div class="cloud-circle c15"></div>
+                                        <div class="cloud-circle c16"></div><div class="cloud-circle c17"></div><div class="cloud-circle c18"></div><div class="cloud-circle c19"></div><div class="cloud-circle c20"></div>
+                                        <div class="cloud-circle c21"></div><div class="cloud-circle c22"></div><div class="cloud-circle c23"></div>
+                                    </div>
+                                    <img v-if="student.isWangHenning" src="dog.svg" class="result-icon result-icon-left" alt="dog">
+                                    <span class="badge-name">{{ student.name }}</span>
+                                    <img v-if="student.isWangHenning" src="cat.svg" class="result-icon result-icon-right" alt="cat">
+                                    <span v-if="student.isWebDeveloper" class="web-dev-mini-badge">
+                                        <i class="fas fa-code"></i>
                                     </span>
-                                </div>
+                                    <span class="badge-rank">#{{ student.rank }}</span>
+                                </span>
                             </div>
                         </div>
                     </div>

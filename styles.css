@@ -50,6 +50,7 @@
     --tx-radius-md: 8px;
     --tx-radius-lg: 12px;
     --tx-radius-xl: 16px;
+    --tx-radius-2xl: 20px;
     
     /* 动画 */
     --tx-transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
@@ -75,6 +76,7 @@
     --tx-spacing-lg: 24px;
     --tx-spacing-xl: 32px;
     --tx-spacing-2xl: 48px;
+    --tx-spacing-3xl: 64px;
 }
 
 /* 全局重置 */
@@ -301,13 +303,14 @@ body {
 }
 
 .result-title {
-    font-size: var(--tx-font-size-2xl);
+    font-size: 28px;
     font-weight: 700;
     color: var(--tx-text-primary);
     background: linear-gradient(135deg, var(--tx-primary) 0%, var(--tx-secondary) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    margin-bottom: var(--tx-spacing-lg);
 }
 
 .result-count {
@@ -356,10 +359,10 @@ body {
     padding: var(--tx-spacing-xl) var(--tx-spacing-2xl);
     background: linear-gradient(135deg, var(--tx-primary) 0%, var(--tx-primary-dark) 100%);
     color: #FFFFFF;
-    border-radius: var(--tx-radius-xl);
+    border-radius: var(--tx-radius-2xl);
     font-weight: 800;
-    font-size: var(--tx-font-size-4xl);
-    min-width: 280px;
+    font-size: 42px;
+    min-width: 240px;
     min-height: 120px;
     box-shadow: 
         0 10px 40px rgba(7, 193, 96, 0.4),
@@ -370,6 +373,7 @@ body {
     transform: scale(1);
     position: relative;
     overflow: hidden;
+    letter-spacing: 2px;
 }
 
 .result-badge::before {
@@ -410,10 +414,13 @@ body {
 .badge-name {
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
     letter-spacing: 2px;
+    font-size: 42px;
+    position: relative;
+    z-index: 10;
 }
 
 .badge-rank {
-    font-size: var(--tx-font-size-sm);
+    font-size: 14px;
     font-weight: 600;
     opacity: 0.9;
     text-transform: uppercase;
@@ -422,9 +429,9 @@ body {
 }
 
 .result-badge:hover {
-    transform: scale(1.08) translateY(-6px);
+    transform: scale(1.05) translateY(-4px);
     box-shadow: 
-        0 20px 60px rgba(7, 193, 96, 0.5),
+        0 15px 50px rgba(7, 193, 96, 0.5),
         0 0 80px rgba(7, 193, 96, 0.3);
 }
 
@@ -438,7 +445,7 @@ body {
 
 .result-badge.golden:hover {
     box-shadow: 
-        0 20px 60px rgba(255, 165, 0, 0.6),
+        0 15px 50px rgba(255, 165, 0, 0.6),
         0 0 80px rgba(255, 215, 0, 0.4);
 }
 
@@ -452,7 +459,7 @@ body {
 
 .result-badge.blue:hover {
     box-shadow: 
-        0 20px 60px rgba(20, 123, 255, 0.6),
+        0 15px 50px rgba(20, 123, 255, 0.6),
         0 0 80px rgba(20, 123, 255, 0.4);
 }
 
@@ -466,8 +473,172 @@ body {
 
 .result-badge.special-green:hover {
     box-shadow: 
-        0 20px 60px rgba(7, 193, 96, 0.6),
+        0 15px 50px rgba(7, 193, 96, 0.6),
         0 0 80px rgba(7, 193, 96, 0.4);
+}
+
+/* 云朵形状徽章（原鑫椿） - 自然融合效果 */
+.result-badge.cloud-shaped {
+    background: transparent;
+    color: #1D2129;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.15);
+    position: relative;
+    overflow: visible;
+    min-width: 240px;
+    min-height: 120px;
+    border: none;
+    box-shadow: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    isolation: isolate;
+}
+
+/* 云朵容器 - 使用混合模式让圆形融合 */
+.cloud-container {
+    position: absolute;
+    width: 240px;
+    height: 96px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 0;
+    mix-blend-mode: screen;
+}
+
+/* 云朵的各个圆形部分 - 实心填充，融合效果 */
+.cloud-circle {
+    position: absolute;
+    border-radius: 50%;
+    background: linear-gradient(45deg, #B0E3FE, #A8D8F0, #FFCCDB, #FFB3CE, #B0E3FE, #A8D8F0, #FFCCDB, #FFB3CE);
+    background-size: 400% 400%;
+    animation: cloudGradientFlow 6s ease infinite;
+    filter: blur(1px);
+    box-shadow: 
+        0 0 20px rgba(176, 227, 254, 0.6),
+        0 0 40px rgba(255, 204, 219, 0.4);
+}
+
+/* 为不同的圆形设置不同的动画延迟，创造流动感 */
+.cloud-circle.c1 { animation-delay: 0s; }
+.cloud-circle.c2 { animation-delay: 0.2s; }
+.cloud-circle.c3 { animation-delay: 0.4s; }
+.cloud-circle.c4 { animation-delay: 0.6s; }
+.cloud-circle.c5 { animation-delay: 0.8s; }
+.cloud-circle.c6 { animation-delay: 1s; }
+.cloud-circle.c7 { animation-delay: 1.2s; }
+.cloud-circle.c8 { animation-delay: 1.4s; }
+.cloud-circle.c9 { animation-delay: 1.6s; }
+.cloud-circle.c10 { animation-delay: 1.8s; }
+.cloud-circle.c11 { animation-delay: 2s; }
+.cloud-circle.c12 { animation-delay: 2.2s; }
+.cloud-circle.c13 { animation-delay: 2.4s; }
+.cloud-circle.c14 { animation-delay: 2.6s; }
+.cloud-circle.c15 { animation-delay: 2.8s; }
+.cloud-circle.c16 { animation-delay: 3s; }
+.cloud-circle.c17 { animation-delay: 3.2s; }
+.cloud-circle.c18 { animation-delay: 3.4s; }
+.cloud-circle.c19 { animation-delay: 3.6s; }
+.cloud-circle.c20 { animation-delay: 3.8s; }
+.cloud-circle.c21 { animation-delay: 4s; }
+.cloud-circle.c22 { animation-delay: 4.2s; }
+.cloud-circle.c23 { animation-delay: 4.4s; }
+
+@keyframes cloudGradientFlow {
+    0% { background-position: 0% 50%; }
+    25% { background-position: 50% 100%; }
+    50% { background-position: 100% 50%; }
+    75% { background-position: 50% 0%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* 第一层圆形（主要轮廓圆形） */
+.cloud-circle.c1 { width: 62px; height: 62px; top: 8px; left: 0; }
+.cloud-circle.c2 { width: 72px; height: 72px; top: -2px; left: 27px; }
+.cloud-circle.c3 { width: 82px; height: 82px; top: -8px; left: 63px; }
+.cloud-circle.c4 { width: 78px; height: 78px; top: -3px; left: 108px; }
+.cloud-circle.c5 { width: 68px; height: 68px; top: 5px; left: 150px; }
+.cloud-circle.c6 { width: 56px; height: 56px; top: 14px; left: 189px; }
+
+/* 第二层圆形 */
+.cloud-circle.c7 { width: 52px; height: 52px; top: 28px; left: -11px; }
+.cloud-circle.c8 { width: 68px; height: 68px; top: 22px; left: 17px; }
+.cloud-circle.c9 { width: 78px; height: 78px; top: 17px; left: 56px; }
+.cloud-circle.c10 { width: 82px; height: 82px; top: 15px; left: 99px; }
+.cloud-circle.c11 { width: 72px; height: 72px; top: 19px; left: 142px; }
+.cloud-circle.c12 { width: 62px; height: 62px; top: 25px; left: 181px; }
+
+/* 第三层圆形 */
+.cloud-circle.c13 { width: 52px; height: 52px; top: 46px; left: 3px; }
+.cloud-circle.c14 { width: 62px; height: 62px; top: 41px; left: 37px; }
+.cloud-circle.c15 { width: 72px; height: 72px; top: 39px; left: 79px; }
+.cloud-circle.c16 { width: 68px; height: 68px; top: 41px; left: 127px; }
+.cloud-circle.c17 { width: 56px; height: 56px; top: 46px; left: 171px; }
+.cloud-circle.c18 { width: 46px; height: 46px; top: 55px; left: 204px; }
+
+/* 第四层圆形 */
+.cloud-circle.c19 { width: 42px; height: 42px; top: 61px; left: 22px; }
+.cloud-circle.c20 { width: 52px; height: 52px; top: 58px; left: 61px; }
+.cloud-circle.c21 { width: 56px; height: 56px; top: 55px; left: 104px; }
+.cloud-circle.c22 { width: 52px; height: 52px; top: 58px; left: 147px; }
+.cloud-circle.c23 { width: 44px; height: 44px; top: 63px; left: 185px; }
+
+.result-badge.cloud-shaped:hover {
+    transform: scale(1.05) translateY(-4px);
+}
+
+/* 王鹤凝的特殊样式 */
+.result-badge.wang-henning {
+    background: #FFB6C1;
+    color: #8B0000;
+    border: 4px solid #FF69B4;
+    border-radius: var(--tx-radius-lg);
+    box-shadow: 
+        0 15px 60px rgba(255, 105, 180, 0.4),
+        0 0 80px rgba(255, 182, 193, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    min-width: 280px;
+}
+
+.result-badge.wang-henning:hover {
+    transform: scale(1.05) translateY(-4px);
+    box-shadow: 
+        0 15px 50px rgba(255, 105, 180, 0.5),
+        0 0 80px rgba(255, 182, 193, 0.4);
+}
+
+/* 结果图标样式 */
+.result-icon {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+    filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.2));
+    transition: transform 0.3s ease;
+}
+
+.result-icon:hover {
+    transform: scale(1.2) rotate(10deg);
+}
+
+.result-icon-left {
+    animation: bounce-left 2s ease-in-out infinite;
+}
+
+.result-icon-right {
+    animation: bounce-right 2s ease-in-out infinite;
+}
+
+@keyframes bounce-left {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+}
+
+@keyframes bounce-right {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
 }
 
 /* 控制区域 */
@@ -1213,9 +1384,9 @@ body {
 
 .result-badge.web-developer-result:hover {
     box-shadow: 
-        0 20px 60px rgba(0, 0, 0, 0.6),
+        0 15px 50px rgba(0, 0, 0, 0.6),
         0 0 80px rgba(138, 43, 226, 0.4) !important;
-    transform: scale(1.08) translateY(-6px) !important;
+    transform: scale(1.05) translateY(-4px) !important;
 }
 
 .student-avatar {

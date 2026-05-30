@@ -9,7 +9,7 @@
     /**
      * 公平加权随机点名系统 v2.0
      * 算法说明：
-     * 1. 基础权重：1/sqrt(rank) - 名次越靠后权重越高，差距控制在2倍左右
+     * 1. 基础权重：rank^(-1/4) - 名次越靠后权重越高，差距控制在3倍左右
      * 2. 保底权重：占总权重25%，确保每个人都有最低抽取概率
      * 3. 衰减机制：每次抽中后权重×0.9，防止重复抽取同一人
      * 4. 轮盘赌算法：基于最终权重进行加权随机选择
@@ -33,21 +33,21 @@
         }
         
         /**
-         * 预计算基础权重
-         * 公式：baseWeight = 1 / sqrt(rank)
-         * 第1名：1.0
-         * 第41名：0.156
-         * 差距：约6.4倍（通过平方根降低差距）
-         */
-        _precompute() {
-            this.baseWeights = {};
-            let totalBase = 0;
-            
-            for (const s of this.students) {
-                const w = 1 / Math.sqrt(s.rank);
-                this.baseWeights[s.id] = w;
-                totalBase += w;
-            }
+     * 预计算基础权重
+     * 公式：baseWeight = rank^(-1/4)
+     * 第1名：1.0
+     * 第41名：0.358
+     * 差距：约2.8倍（通过四次方根降低差距）
+     */
+    _precompute() {
+        this.baseWeights = {};
+        let totalBase = 0;
+        
+        for (const s of this.students) {
+            const w = Math.pow(s.rank, -0.25);
+            this.baseWeights[s.id] = w;
+            totalBase += w;
+        }
             
             // 计算平均基础权重（用于保底权重计算）
             this.avgBaseWeight = totalBase / this.students.length;
@@ -300,7 +300,9 @@
                     rank: index + 1,
                     probability: 0,
                     isSpecial: name === '贾烨标',
-                    isWebDeveloper: name === '李梦雨'
+                    isWebDeveloper: name === '李梦雨',
+                    isCloudShaped: name === '原鑫椿',
+                    isWangHenning: name === '王鹤凝'
                 }))
             );
 
