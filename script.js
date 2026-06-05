@@ -305,7 +305,7 @@
                     isWangHenning: name === '王鹤凝',
                     isYuanZijie: name === '原梓杰',
                     hasFnIcon: name === '成浩宇',
-                    isLiMianshuai: name === '李湣帅'
+                    isColorfulWhite: name === '李湣帅'
                 }))
             );
 
