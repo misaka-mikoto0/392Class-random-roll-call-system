@@ -681,6 +681,22 @@ body {
     transition: transform 0.3s ease;
 }
 
+/* 成浩宇的fn图标样式 */
+.fn-icon {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    vertical-align: middle;
+    margin-left: 6px;
+    object-fit: contain;
+    filter: drop-shadow(1px 1px 2px rgba(0, 0, 0, 0.2));
+    transition: transform 0.2s ease;
+}
+
+.fn-icon:hover {
+    transform: scale(1.1);
+}
+
 .result-icon:hover {
     transform: scale(1.2) rotate(10deg);
 }
