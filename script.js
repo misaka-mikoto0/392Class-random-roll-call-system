@@ -302,7 +302,8 @@
                     isSpecial: name === '贾烨标',
                     isWebDeveloper: name === '李梦雨',
                     isCloudShaped: name === '原鑫椿',
-                    isWangHenning: name === '王鹤凝'
+                    isWangHenning: name === '王鹤凝',
+                    isYuanZijie: name === '原梓杰'
                 }))
             );
 
