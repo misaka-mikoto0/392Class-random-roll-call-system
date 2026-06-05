@@ -672,6 +672,84 @@ body {
     border-color: rgba(255, 255, 255, 0.8);
 }
 
+/* 李湣帅的五彩斑斓的白效果 */
+.result-badge.li-mianshuai {
+    background: 
+        radial-gradient(ellipse at 20% 30%, rgba(255, 200, 220, 0.15) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 20%, rgba(200, 220, 255, 0.15) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 80%, rgba(220, 255, 200, 0.12) 0%, transparent 50%),
+        radial-gradient(ellipse at 10% 70%, rgba(255, 240, 200, 0.1) 0%, transparent 45%),
+        radial-gradient(ellipse at 90% 60%, rgba(240, 200, 255, 0.12) 0%, transparent 45%),
+        linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 249, 250, 0.98) 50%, rgba(252, 252, 253, 0.98) 100%);
+    color: #2c3e50;
+    border: 3px solid rgba(200, 200, 210, 0.4);
+    border-radius: var(--tx-radius-xl);
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.08),
+        0 0 0 1px rgba(255, 255, 255, 0.8) inset,
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    position: relative;
+    overflow: hidden;
+    min-width: 240px;
+    min-height: 100px;
+    transition: var(--tx-transition);
+}
+
+.result-badge.li-mianshuai::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -50%;
+    width: 200%;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.4) 25%,
+        rgba(255, 255, 255, 0.8) 50%,
+        rgba(255, 255, 255, 0.4) 75%,
+        transparent 100%
+    );
+    transform: skewX(-20deg);
+    animation: shimmer 3s ease-in-out infinite;
+    pointer-events: none;
+}
+
+@keyframes shimmer {
+    0%, 100% {
+        transform: translateX(-100%) skewX(-20deg);
+    }
+    50% {
+        transform: translateX(50%) skewX(-20deg);
+    }
+}
+
+.result-badge.li-mianshuai .badge-name {
+    font-size: 42px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+    color: #1a202c;
+}
+
+.result-badge.li-mianshuai .badge-rank {
+    font-size: 14px;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 4px;
+}
+
+.result-badge.li-mianshuai:hover {
+    transform: scale(1.05) translateY(-4px);
+    border-color: rgba(180, 180, 195, 0.6);
+    box-shadow: 
+        0 12px 40px rgba(0, 0, 0, 0.12),
+        0 0 0 1px rgba(255, 255, 255, 0.9) inset,
+        inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
 /* 结果图标样式 */
 .result-icon {
     width: 48px;
@@ -1764,6 +1842,15 @@ body {
     .result-badge.yuan-zijie .badge-name {
         font-size: 36px;
     }
+    
+    .result-badge.li-mianshuai {
+        min-width: 240px;
+        min-height: 100px;
+    }
+    
+    .result-badge.li-mianshuai .badge-name {
+        font-size: 36px;
+    }
 }
 
 @media (max-width: 768px) {
@@ -1846,6 +1933,20 @@ body {
     }
     
     .result-badge.yuan-zijie .badge-rank {
+        font-size: 12px;
+    }
+    
+    .result-badge.li-mianshuai {
+        min-width: 200px;
+        min-height: 90px;
+    }
+    
+    .result-badge.li-mianshuai .badge-name {
+        font-size: 30px;
+        letter-spacing: 1px;
+    }
+    
+    .result-badge.li-mianshuai .badge-rank {
         font-size: 12px;
     }
     
@@ -1968,6 +2069,22 @@ body {
     }
     
     .result-badge.yuan-zijie .badge-rank {
+        font-size: 10px;
+        margin-top: 2px;
+    }
+    
+    .result-badge.li-mianshuai {
+        min-width: 160px;
+        min-height: 70px;
+        border-width: 3px;
+    }
+    
+    .result-badge.li-mianshuai .badge-name {
+        font-size: 24px;
+        letter-spacing: 0;
+    }
+    
+    .result-badge.li-mianshuai .badge-rank {
         font-size: 10px;
         margin-top: 2px;
     }

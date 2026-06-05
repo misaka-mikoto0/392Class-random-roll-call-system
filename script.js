@@ -304,7 +304,8 @@
                     isCloudShaped: name === '原鑫椿',
                     isWangHenning: name === '王鹤凝',
                     isYuanZijie: name === '原梓杰',
-                    hasFnIcon: name === '成浩宇'
+                    hasFnIcon: name === '成浩宇',
+                    isLiMianshuai: name === '李湣帅'
                 }))
             );
 
