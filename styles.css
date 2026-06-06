@@ -12,7 +12,7 @@
 
 /* 全局变量定义 */
 :root {
-    /* 主题色 - 腾讯风格 */
+    /* 主题�?- 腾讯风格 */
     --tx-primary: #07C160;
     --tx-primary-dark: #06AD56;
     --tx-primary-light: #E8F8EF;
@@ -23,7 +23,7 @@
     --tx-warning: #FF9F43;
     --tx-error: #FF4757;
     
-    /* 背景色 */
+    /* 背景�?*/
     --tx-bg-primary: #FFFFFF;
     --tx-bg-secondary: #F7F8FA;
     --tx-bg-tertiary: #EDEFF2;
@@ -35,7 +35,7 @@
     --tx-text-tertiary: #C9CDD4;
     --tx-text-muted: #E5E6EB;
     
-    /* 边框色 */
+    /* 边框�?*/
     --tx-border: #E5E6EB;
     --tx-border-light: #F2F3F5;
     
@@ -108,10 +108,10 @@ body {
     overflow-x: hidden;
 }
 
-/* 主容器 */
+/* 主容�?*/
 .app-container {
     width: 100%;
-    max-width: 1200px;
+    max-width: 1800px;
     margin: 0 auto;
     padding: var(--tx-spacing-xl) var(--tx-spacing-lg);
     min-height: 100vh;
@@ -209,7 +209,7 @@ body {
 /* 内容区域 */
 .content-wrapper {
     display: grid;
-    grid-template-columns: 1fr 320px;
+    grid-template-columns: 1.2fr 360px;
     gap: var(--tx-spacing-xl);
     align-items: flex-start;
 }
@@ -331,7 +331,7 @@ body {
     padding: var(--tx-spacing-lg) 0;
 }
 
-/* 结果徽章包装器 - 动画容器 */
+/* 结果徽章包装�?- 动画容器 */
 .result-badge-wrapper {
     position: relative;
     display: inline-block;
@@ -356,14 +356,13 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: var(--tx-spacing-xl) var(--tx-spacing-2xl);
+    padding: var(--tx-spacing-lg) var(--tx-spacing-3xl);
     background: linear-gradient(135deg, var(--tx-primary) 0%, var(--tx-primary-dark) 100%);
     color: #FFFFFF;
-    border-radius: var(--tx-radius-2xl);
+    border-radius: var(--tx-radius-lg);
     font-weight: 800;
     font-size: 42px;
-    min-width: 240px;
-    min-height: 120px;
+    min-width: 320px; min-height: 140px;
     box-shadow: 
         0 10px 40px rgba(7, 193, 96, 0.4),
         0 0 60px rgba(7, 193, 96, 0.2),
@@ -463,7 +462,7 @@ body {
         0 0 80px rgba(20, 123, 255, 0.4);
 }
 
-/* 绿色徽章（贾烨标） */
+/* 绿色徽章（贾烨标�?*/
 .result-badge.special-green {
     background: linear-gradient(135deg, var(--tx-success) 0%, var(--tx-primary-dark) 100%);
     box-shadow: 
@@ -477,15 +476,14 @@ body {
         0 0 80px rgba(7, 193, 96, 0.4);
 }
 
-/* 云朵形状徽章（原鑫椿） - 自然融合效果 */
+/* 云朵形状徽章（原鑫椿�?- 自然融合效果 */
 .result-badge.cloud-shaped {
     background: transparent;
     color: #1D2129;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.15);
     position: relative;
     overflow: visible;
-    min-width: 240px;
-    min-height: 120px;
+    min-width: 320px; min-height: 140px;
     border: none;
     box-shadow: none;
     display: flex;
@@ -494,7 +492,7 @@ body {
     isolation: isolate;
 }
 
-/* 云朵容器 - 使用混合模式让圆形融合 */
+/* 云朵容器 - 使用混合模式让圆形融�?*/
 .cloud-container {
     position: absolute;
     width: 240px;
@@ -506,7 +504,7 @@ body {
     mix-blend-mode: screen;
 }
 
-/* 云朵的各个圆形部分 - 实心填充，融合效果 */
+/* 云朵的各个圆形部�?- 实心填充，融合效�?*/
 .cloud-circle {
     position: absolute;
     border-radius: 50%;
@@ -552,7 +550,7 @@ body {
     100% { background-position: 0% 50%; }
 }
 
-/* 第一层圆形（主要轮廓圆形） */
+/* 第一层圆形（主要轮廓圆形�?*/
 .cloud-circle.c1 { width: 62px; height: 62px; top: 8px; left: 0; }
 .cloud-circle.c2 { width: 72px; height: 72px; top: -2px; left: 27px; }
 .cloud-circle.c3 { width: 82px; height: 82px; top: -8px; left: 63px; }
@@ -560,7 +558,7 @@ body {
 .cloud-circle.c5 { width: 68px; height: 68px; top: 5px; left: 150px; }
 .cloud-circle.c6 { width: 56px; height: 56px; top: 14px; left: 189px; }
 
-/* 第二层圆形 */
+/* 第二层圆�?*/
 .cloud-circle.c7 { width: 52px; height: 52px; top: 28px; left: -11px; }
 .cloud-circle.c8 { width: 68px; height: 68px; top: 22px; left: 17px; }
 .cloud-circle.c9 { width: 78px; height: 78px; top: 17px; left: 56px; }
@@ -568,7 +566,7 @@ body {
 .cloud-circle.c11 { width: 72px; height: 72px; top: 19px; left: 142px; }
 .cloud-circle.c12 { width: 62px; height: 62px; top: 25px; left: 181px; }
 
-/* 第三层圆形 */
+/* 第三层圆�?*/
 .cloud-circle.c13 { width: 52px; height: 52px; top: 46px; left: 3px; }
 .cloud-circle.c14 { width: 62px; height: 62px; top: 41px; left: 37px; }
 .cloud-circle.c15 { width: 72px; height: 72px; top: 39px; left: 79px; }
@@ -576,7 +574,7 @@ body {
 .cloud-circle.c17 { width: 56px; height: 56px; top: 46px; left: 171px; }
 .cloud-circle.c18 { width: 46px; height: 46px; top: 55px; left: 204px; }
 
-/* 第四层圆形 */
+/* 第四层圆�?*/
 .cloud-circle.c19 { width: 42px; height: 42px; top: 61px; left: 22px; }
 .cloud-circle.c20 { width: 52px; height: 52px; top: 58px; left: 61px; }
 .cloud-circle.c21 { width: 56px; height: 56px; top: 55px; left: 104px; }
@@ -615,14 +613,13 @@ body {
     background: url('ht.jpg') center center / cover no-repeat;
     color: #FFFFFF;
     border: 4px solid rgba(255, 255, 255, 0.5);
-    border-radius: var(--tx-radius-2xl);
+    border-radius: var(--tx-radius-lg);
     box-shadow: 
         0 10px 40px rgba(0, 0, 0, 0.4),
         0 0 60px rgba(0, 0, 0, 0.2);
     position: relative;
     overflow: hidden;
-    min-width: 240px;
-    min-height: 120px;
+    min-width: 320px; min-height: 140px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -857,7 +854,7 @@ body {
     background: var(--tx-primary-light);
 }
 
-/* 输入框 */
+/* 输入�?*/
 .input-group {
     display: flex;
     align-items: center;
@@ -898,7 +895,7 @@ body {
     font-family: var(--tx-font-family);
 }
 
-/* 开关区域 */
+/* 开关区�?*/
 .control-switches {
     display: flex;
     flex-direction: column;
@@ -976,7 +973,7 @@ body {
     transform: translateX(22px);
 }
 
-/* 侧边栏 */
+/* 侧边�?*/
 .sidebar {
     display: flex;
     flex-direction: column;
@@ -1047,7 +1044,7 @@ body {
     font-weight: 500;
 }
 
-/* 进度条 */
+/* 进度�?*/
 .progress-container {
     margin-top: var(--tx-spacing-lg);
 }
@@ -1479,7 +1476,7 @@ body {
     50% { transform: translateY(-3px); }
 }
 
-/* 抽奖结果中李梦雨的五彩斑斓的黑样式 */
+/* 抽奖结果中李梦雨的五彩斑斓的黑样�?*/
 .result-badge.web-developer-result {
     background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%) !important;
     border: 4px solid transparent !important;
@@ -1779,7 +1776,7 @@ body {
     font-size: var(--tx-font-size-sm);
 }
 
-/* 空状态 */
+/* 空状�?*/
 .empty-state {
     text-align: center;
     padding: var(--tx-spacing-xl) 0;
@@ -1793,7 +1790,7 @@ body {
     display: block;
 }
 
-/* 响应式设计 */
+/* 响应式设�?*/
 @media (max-width: 1024px) {
     .content-wrapper {
         grid-template-columns: 1fr;
@@ -2046,3 +2043,18 @@ body {
         height: 44px;
     }
 }
+
+
+
+/* �������⿨Ƭ��ԭ����ƹ�� */
+.result-badge.cloud-shaped,
+.result-badge.wang-henning,
+.result-badge.yuan-zijie,
+.result-badge.colorful-white,
+.result-badge.web-developer-result {
+    min-width: 240px;
+    min-height: 120px;
+    padding: var(--tx-spacing-xl) var(--tx-spacing-2xl);
+    border-radius: var(--tx-radius-2xl);
+}
+
