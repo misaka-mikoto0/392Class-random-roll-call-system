@@ -8,8 +8,6 @@
     <title>392班 · 雅集点名</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous">
-    <script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.7.1/jquery.min.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.bootcdn.net/ajax/libs/vue/3.4.21/vue.global.prod.js" crossorigin="anonymous"></script>
 </head>
 <body>
     <div id="app">
@@ -22,72 +20,38 @@
             </div>
             
             <div class="genshin-quote">
-                <div class="quote-content">{{ quote.content || '正在加载一言...' }}</div>
-                <div class="quote-author">— {{ quote.author || '原神' }}</div>
+                <div class="quote-content" id="quote-content">正在加载一言...</div>
+                <div class="quote-author" id="quote-author">— 原神</div>
             </div>
             
             <div class="content-wrapper">
                 <div class="main-content">
-                    <div class="result-display">
-                        <div v-if="!currentResult.length" class="placeholder-text">
+                    <div class="result-display" id="result-display">
+                        <div class="placeholder-text">
                             <i class="fas fa-random"></i>
                             <p>点击下方按钮开始抽取</p>
                             <p>系统将公平随机选择学生</p>
-                        </div>
-                        <div v-else>
-                            <div class="result-title">抽取结果</div>
-                            <div class="result-names">
-                                <span v-for="(student, index) in currentResult" :key="index" 
-                                      :class="['result-badge', { 
-                                          'golden': student.rank <= 11, 
-                                          'special-green': student.isSpecial,
-                                          'web-developer-result': student.isWebDeveloper,
-                                          'cloud-shaped': student.isCloudShaped,
-                                          'wang-henning': student.isWangHenning,
-                                          'yuan-zijie': student.isYuanZijie,
-                                          'colorful-white': student.isColorfulWhite,
-                                          'blue': student.rank > 11 && !student.isSpecial && !student.isWebDeveloper && !student.isCloudShaped && !student.isWangHenning && !student.isYuanZijie && !student.isColorfulWhite
-                                      }]">
-                                    <div v-if="student.isCloudShaped" class="cloud-container">
-                                        <div class="cloud-circle c1"></div><div class="cloud-circle c2"></div><div class="cloud-circle c3"></div><div class="cloud-circle c4"></div><div class="cloud-circle c5"></div>
-                                        <div class="cloud-circle c6"></div><div class="cloud-circle c7"></div><div class="cloud-circle c8"></div><div class="cloud-circle c9"></div><div class="cloud-circle c10"></div>
-                                        <div class="cloud-circle c11"></div><div class="cloud-circle c12"></div><div class="cloud-circle c13"></div><div class="cloud-circle c14"></div><div class="cloud-circle c15"></div>
-                                        <div class="cloud-circle c16"></div><div class="cloud-circle c17"></div><div class="cloud-circle c18"></div><div class="cloud-circle c19"></div><div class="cloud-circle c20"></div>
-                                        <div class="cloud-circle c21"></div><div class="cloud-circle c22"></div><div class="cloud-circle c23"></div>
-                                    </div>
-                                    <img v-if="student.isWangHenning" src="dog.svg" class="result-icon result-icon-left" alt="dog">
-                                    <span class="badge-name">
-                                        {{ student.name }}
-                                        <img v-if="student.hasFnIcon" src="fn.webp" class="fn-icon" alt="fn" width="42" height="42">
-                                    </span>
-                                    <img v-if="student.isWangHenning" src="cat.svg" class="result-icon result-icon-right" alt="cat">
-                                    <span v-if="student.isWebDeveloper" class="web-dev-mini-badge">
-                                        <i class="fas fa-code"></i>
-                                    </span>
-                                    <span class="badge-rank">#{{ student.rank }}</span>
-                                </span>
-                            </div>
                         </div>
                     </div>
 
                     <div class="controls">
                         <div class="primary-controls">
-                            <button class="tx-btn tx-btn-secondary" @click="showModal = true">
+                            <button class="tx-btn tx-btn-secondary" id="select-students-btn">
                                 <i class="fas fa-users"></i>选择学生
                             </button>
                             <div class="input-group">
                                 <i class="fas fa-user-plus"></i>
-                                <input type="number" v-model.number="drawCount" placeholder="抽取人数" min="1" aria-label="抽取人数">
+                                <input type="number" id="draw-count-input" placeholder="抽取人数" min="1" aria-label="抽取人数" value="1">
                             </div>
-                            <button class="tx-btn tx-btn-primary" @click="startDrawing" :disabled="isRolling">
-                                <i class="fas fa-play"></i>{{ isRolling ? '抽取中...' : '开始抽取' }}
+                            <button class="tx-btn tx-btn-primary" id="start-drawing-btn">
+                                <i class="fas fa-play"></i>开始抽取
                             </button>
                         </div>
 
                         <div class="control-switches">
                             <div class="switch-item">
                                 <label class="switch">
-                                    <input type="checkbox" v-model="onlyTop11" aria-label="仅抽取前11名">
+                                    <input type="checkbox" id="only-top-11" aria-label="仅抽取前11名">
                                     <span class="slider round"></span>
                                 </label>
                                 <span class="switch-label">仅抽取前11名</span>
@@ -101,23 +65,10 @@
                                 <i class="fas fa-history"></i>
                                 <span>抽取记录</span>
                             </div>
-                            <div class="history-list">
-                                <div v-if="history.length === 0" class="empty-state">
+                            <div class="history-list" id="history-list">
+                                <div class="empty-state">
                                     <i class="fas fa-clock"></i>
                                     <p>暂无抽取记录</p>
-                                </div>
-                                <div v-else>
-                                    <div v-for="(record, index) in history" :key="index" class="history-item">
-                                        <div class="history-header">
-                                            <div class="history-time"><i class="fas fa-clock"></i>{{ record.time }}</div>
-                                            <span class="history-count">{{ record.count }}人</span>
-                                        </div>
-                                        <div class="history-names">
-                                            <span v-for="(person, pIndex) in record.people" :key="pIndex">
-                                                {{ person.name }}<span v-if="pIndex < record.people.length - 1">, </span>
-                                            </span>
-                                        </div>
-                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -132,32 +83,32 @@
                         </div>
                         <div class="stats-grid">
                             <div class="stat-card">
-                                <div class="stat-value">{{ students.length }}</div>
+                                <div class="stat-value" id="stat-total-students">0</div>
                                 <div class="stat-label">学生总数</div>
                             </div>
                             <div class="stat-card">
-                                <div class="stat-value">{{ selectedStudents.length }}</div>
+                                <div class="stat-value" id="stat-selected-students">0</div>
                                 <div class="stat-label">参与抽取</div>
                             </div>
                             <div class="stat-card">
-                                <div class="stat-value">{{ totalDraws }}</div>
+                                <div class="stat-value" id="stat-total-draws">0</div>
                                 <div class="stat-label">总抽取次数</div>
                             </div>
                             <div class="stat-card">
-                                <div class="stat-value">{{ history.length > 0 ? history[0].count : 0 }}</div>
+                                <div class="stat-value" id="stat-current-draw">0</div>
                                 <div class="stat-label">本次抽取</div>
                             </div>
                         </div>
                         <div class="progress-container">
                             <div class="progress-label">
                                 <span>学生参与比例</span>
-                                <span>{{ Math.round(participationPercentage) }}%</span>
+                                <span id="participation-percentage">0%</span>
                             </div>
                             <div class="progress-bar" role="progressbar" 
-                                 :aria-valuenow="participationPercentage" 
+                                 aria-valuenow="0" 
                                  aria-valuemin="0" 
                                  aria-valuemax="100">
-                                <div class="progress-fill" :style="{ width: participationPercentage + '%' }"></div>
+                                <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
                             </div>
                         </div>
                     </div>
@@ -196,97 +147,62 @@
 
             <div class="app-footer">
                 <p>随机点名系统 &copy; 2023 392班 | 公平公正的随机算法</p>
-                <p>已抽取 {{ totalDraws }} 次 | 服务 {{ students.length }} 名学生</p>
+                <p id="footer-stats">已抽取 0 次 | 服务 0 名学生</p>
             </div>
         </div>
 
-        <div class="student-modal-overlay" v-show="showModal" @click="showModal = false" 
-             :aria-hidden="!showModal">
-            <div class="student-modal" @click.stop role="dialog" aria-labelledby="modal-title">
+        <div class="student-modal-overlay" id="modal-overlay" style="display: none;" aria-hidden="true">
+            <div class="student-modal" id="student-modal" role="dialog" aria-labelledby="modal-title">
                 <div class="modal-header">
                     <h3 id="modal-title"><i class="fas fa-users"></i>选择参与学生</h3>
-                    <button class="close-btn" @click="showModal = false" aria-label="关闭">
+                    <button class="close-btn" id="modal-close-btn" aria-label="关闭">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
                 
                 <div class="modal-controls">
                     <div class="selection-stats">
-                        <span class="selected-count">已选择: {{ selectedStudents.length }} / {{ students.length }}</span>
+                        <span class="selected-count" id="selected-count">已选择: 0 / 0</span>
                         <div class="control-buttons">
-                            <button class="control-btn select-all-btn" @click="selectAllStudents">
+                            <button class="control-btn select-all-btn" id="select-all-btn">
                                 <i class="fas fa-check-double"></i>全选
                             </button>
-                            <button class="control-btn deselect-all-btn" @click="deselectAllStudents">
+                            <button class="control-btn deselect-all-btn" id="deselect-all-btn">
                                 <i class="fas fa-times-circle"></i>反选
                             </button>
                         </div>
                     </div>
                 </div>
                 
-                <div class="modal-body">
-                    <div v-if="students.length === 0" class="empty-state">
+                <div class="modal-body" id="modal-body">
+                    <div class="empty-state">
                         <i class="fas fa-user-slash"></i>
                         <p>没有可用的学生数据</p>
-                    </div>
-                    <div v-else class="student-grid">
-                        <div v-for="student in students" :key="student.id"
-                             class="student-card" :class="{ 
-                                 'selected': isSelected(student),
-                                 'web-developer': student.isWebDeveloper 
-                             }"
-                             @click="toggleStudentSelection(student)"
-                             :tabindex="0"
-                             :aria-selected="isSelected(student)"
-                             role="option">
-                            <div class="student-avatar" :class="{ 'top-student': student.rank <= 11 }">
-                                {{ student.name.charAt(0) }}
-                            </div>
-                            <div class="student-info">
-                                <div class="student-name">
-                                    {{ student.name }}
-                                    <span v-if="student.isWebDeveloper" class="web-dev-badge">
-                                        <i class="fas fa-code"></i> Web Developer
-                                    </span>
-                                </div>
-                                <div class="student-rank">第{{ student.rank }}名</div>
-                            </div>
-                            <div class="selection-indicator">
-                                <i class="fas fa-check-circle" v-if="isSelected(student)"></i>
-                                <i class="far fa-circle" v-else></i>
-                            </div>
-                        </div>
                     </div>
                 </div>
                 
                 <div class="modal-footer">
-                    <button class="modal-btn cancel-btn" @click="showModal = false">
+                    <button class="modal-btn cancel-btn" id="modal-cancel-btn">
                         <i class="fas fa-times"></i>取消
                     </button>
-                    <button class="modal-btn confirm-btn" @click="confirmSelection">
-                        <i class="fas fa-check"></i>确认选择 ({{ selectedStudents.length }})
+                    <button class="modal-btn confirm-btn" id="modal-confirm-btn">
+                        <i class="fas fa-check"></i>确认选择 (0)
                     </button>
                 </div>
             </div>
         </div>
 
-        <div class="toast-container" role="alert" aria-live="polite" aria-atomic="true">
-            <div v-if="toast.show" class="toast">
-                <strong>{{ toast.title }}</strong>
-                <span>{{ toast.message }}</span>
+        <div class="toast-container" role="alert" aria-live="polite" aria-atomic="true" id="toast-container">
+            <div class="toast" id="toast" style="display: none;">
+                <strong id="toast-title"></strong>
+                <span id="toast-message"></span>
             </div>
         </div>
 
         <div class="floating-controls">
-            <button class="floating-btn music-btn" 
-                    :class="{ 'active': isMusicPlaying, 'loading': isMusicLoading }" 
-                    @click="toggleMusic" 
-                    :disabled="isRolling || isMusicLoading" 
-                    :title="isMusicPlaying ? '暂停音乐' : '播放音乐'"
-                    aria-label="音乐控制">
-                <i class="fas" :class="isMusicLoading ? 'fa-spinner fa-spin' : (isMusicPlaying ? 'fa-pause' : 'fa-music')"></i>
-                <span class="btn-label" v-if="isMusicPlaying">播放中</span>
-                <span class="btn-label" v-else>音乐</span>
+            <button class="floating-btn music-btn" id="music-btn" title="播放音乐" aria-label="音乐控制">
+                <i class="fas fa-music"></i>
+                <span class="btn-label">音乐</span>
             </button>
             <button class="floating-btn background-btn" id="changeBackgroundBtn" title="切换背景" aria-label="切换背景">
                 <i class="fas fa-image"></i>
