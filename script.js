@@ -1,15 +1,15 @@
 /**
- * 公平加权随机点名系统 v2.0
+ * 公平加权随机点名系统 v2.1
  * 算法说明：
- * 1. 基础权重：rank^(-1/4) - 名次越靠后权重越高，差距控制在3倍左右
- * 2. 保底权重：占总权重25%，确保每个人都有最低抽取概率
+ * 1. 基础权重：rank^(-1/6.67) - 名次越靠后权重越高，差距控制在1.5倍左右
+ * 2. 保底权重：占总权重40%，确保每个人都有较高的最低抽取概率
  * 3. 衰减机制：每次抽中后权重×0.9，防止重复抽取同一人
  * 4. 轮盘赌算法：基于最终权重进行加权随机选择
  */
 class FairWeightedRollCall {
     constructor(students, options = {}) {
         this.students = students;
-        this.guaranteeRatio = options.guaranteeRatio ?? 0.25;
+        this.guaranteeRatio = options.guaranteeRatio ?? 0.40;
         this.decayFactor = options.decayFactor ?? 0.9;
         this.resetPeriod = options.resetPeriod ?? 'per_class';
         
@@ -27,7 +27,7 @@ class FairWeightedRollCall {
         let totalBase = 0;
         
         for (const s of this.students) {
-            const w = Math.pow(s.rank, -0.25);
+            const w = Math.pow(s.rank, -0.15);
             this.baseWeights[s.id] = w;
             totalBase += w;
         }
