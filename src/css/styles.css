@@ -12,7 +12,7 @@
 
 /* 全局变量定义 */
 :root {
-    /* 主题�?- 腾讯风格 */
+    /* 主题�?- 腾讯风格 */
     --tx-primary: #07C160;
     --tx-primary-dark: #06AD56;
     --tx-primary-light: #E8F8EF;
@@ -23,7 +23,7 @@
     --tx-warning: #FF9F43;
     --tx-error: #FF4757;
     
-    /* 背景�?*/
+    /* 背景�?*/
     --tx-bg-primary: #FFFFFF;
     --tx-bg-secondary: #F7F8FA;
     --tx-bg-tertiary: #EDEFF2;
@@ -35,7 +35,7 @@
     --tx-text-tertiary: #C9CDD4;
     --tx-text-muted: #E5E6EB;
     
-    /* 边框�?*/
+    /* 边框�?*/
     --tx-border: #E5E6EB;
     --tx-border-light: #F2F3F5;
     
@@ -108,7 +108,7 @@ body {
     overflow-x: hidden;
 }
 
-/* 主容�?*/
+/* 主容�?*/
 .app-container {
     width: 100%;
     max-width: 1800px;
@@ -331,7 +331,7 @@ body {
     padding: var(--tx-spacing-lg) 0;
 }
 
-/* 结果徽章包装�?- 动画容器 */
+/* 结果徽章包装�?- 动画容器 */
 .result-badge-wrapper {
     position: relative;
     display: inline-block;
@@ -427,6 +427,43 @@ body {
     margin-top: var(--tx-spacing-xs);
 }
 
+.badge-rank.highlight-rank {
+    display: inline-block;
+    font-size: 18px;
+    font-weight: 800;
+    color: #FFFFFF;
+    background: linear-gradient(135deg, #FF6B6B 0%, #FFE66D 100%);
+    padding: 6px 16px;
+    border-radius: 20px;
+    margin-top: 12px;
+    text-transform: none;
+    letter-spacing: 2px;
+    box-shadow: 
+        0 4px 15px rgba(255, 107, 107, 0.4),
+        0 0 30px rgba(255, 230, 109, 0.3),
+        inset 0 2px 4px rgba(255, 255, 255, 0.3);
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    animation: rankPulse 2s ease-in-out infinite;
+}
+
+@keyframes rankPulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 
+            0 4px 15px rgba(255, 107, 107, 0.4),
+            0 0 30px rgba(255, 230, 109, 0.3),
+            inset 0 2px 4px rgba(255, 255, 255, 0.3);
+    }
+    50% {
+        transform: scale(1.05);
+        box-shadow: 
+            0 6px 20px rgba(255, 107, 107, 0.6),
+            0 0 40px rgba(255, 230, 109, 0.4),
+            inset 0 2px 4px rgba(255, 255, 255, 0.3);
+    }
+}
+
 .result-badge:hover {
     transform: scale(1.05) translateY(-4px);
     box-shadow: 
@@ -462,7 +499,7 @@ body {
         0 0 80px rgba(20, 123, 255, 0.4);
 }
 
-/* 绿色徽章（贾烨标�?*/
+/* 绿色徽章（贾烨标�?*/
 .result-badge.special-green {
     background: linear-gradient(135deg, var(--tx-success) 0%, var(--tx-primary-dark) 100%);
     box-shadow: 
@@ -476,7 +513,7 @@ body {
         0 0 80px rgba(7, 193, 96, 0.4);
 }
 
-/* 云朵形状徽章（原鑫椿�?- 自然融合效果 */
+/* 云朵形状徽章（原鑫椿�?- 自然融合效果 */
 .result-badge.cloud-shaped {
     background: transparent;
     color: #1D2129;
@@ -492,7 +529,7 @@ body {
     isolation: isolate;
 }
 
-/* 云朵容器 - 使用混合模式让圆形融�?*/
+/* 云朵容器 - 使用混合模式让圆形融�?*/
 .cloud-container {
     position: absolute;
     width: 240px;
@@ -504,7 +541,7 @@ body {
     mix-blend-mode: screen;
 }
 
-/* 云朵的各个圆形部�?- 实心填充，融合效�?*/
+/* 云朵的各个圆形部�?- 实心填充，融合效�?*/
 .cloud-circle {
     position: absolute;
     border-radius: 50%;
@@ -550,7 +587,7 @@ body {
     100% { background-position: 0% 50%; }
 }
 
-/* 第一层圆形（主要轮廓圆形�?*/
+/* 第一层圆形（主要轮廓圆形�?*/
 .cloud-circle.c1 { width: 62px; height: 62px; top: 8px; left: 0; }
 .cloud-circle.c2 { width: 72px; height: 72px; top: -2px; left: 27px; }
 .cloud-circle.c3 { width: 82px; height: 82px; top: -8px; left: 63px; }
@@ -558,7 +595,7 @@ body {
 .cloud-circle.c5 { width: 68px; height: 68px; top: 5px; left: 150px; }
 .cloud-circle.c6 { width: 56px; height: 56px; top: 14px; left: 189px; }
 
-/* 第二层圆�?*/
+/* 第二层圆�?*/
 .cloud-circle.c7 { width: 52px; height: 52px; top: 28px; left: -11px; }
 .cloud-circle.c8 { width: 68px; height: 68px; top: 22px; left: 17px; }
 .cloud-circle.c9 { width: 78px; height: 78px; top: 17px; left: 56px; }
@@ -566,7 +603,7 @@ body {
 .cloud-circle.c11 { width: 72px; height: 72px; top: 19px; left: 142px; }
 .cloud-circle.c12 { width: 62px; height: 62px; top: 25px; left: 181px; }
 
-/* 第三层圆�?*/
+/* 第三层圆�?*/
 .cloud-circle.c13 { width: 52px; height: 52px; top: 46px; left: 3px; }
 .cloud-circle.c14 { width: 62px; height: 62px; top: 41px; left: 37px; }
 .cloud-circle.c15 { width: 72px; height: 72px; top: 39px; left: 79px; }
@@ -574,7 +611,7 @@ body {
 .cloud-circle.c17 { width: 56px; height: 56px; top: 46px; left: 171px; }
 .cloud-circle.c18 { width: 46px; height: 46px; top: 55px; left: 204px; }
 
-/* 第四层圆�?*/
+/* 第四层圆�?*/
 .cloud-circle.c19 { width: 42px; height: 42px; top: 61px; left: 22px; }
 .cloud-circle.c20 { width: 52px; height: 52px; top: 58px; left: 61px; }
 .cloud-circle.c21 { width: 56px; height: 56px; top: 55px; left: 104px; }
@@ -610,7 +647,7 @@ body {
 
 /* 原梓杰的特殊样式 - 使用ht.jpg作为背景 */
 .result-badge.yuan-zijie {
-    background: url('ht.jpg') center center / cover no-repeat;
+    background: url('../assets/ht.jpg') center center / cover no-repeat;
     color: #FFFFFF;
     border: 4px solid rgba(255, 255, 255, 0.5);
     border-radius: var(--tx-radius-lg);
@@ -854,7 +891,7 @@ body {
     background: var(--tx-primary-light);
 }
 
-/* 输入�?*/
+/* 输入�?*/
 .input-group {
     display: flex;
     align-items: center;
@@ -895,7 +932,7 @@ body {
     font-family: var(--tx-font-family);
 }
 
-/* 开关区�?*/
+/* 开关区�?*/
 .control-switches {
     display: flex;
     flex-direction: column;
@@ -973,7 +1010,7 @@ body {
     transform: translateX(22px);
 }
 
-/* 侧边�?*/
+/* 侧边�?*/
 .sidebar {
     display: flex;
     flex-direction: column;
@@ -1044,7 +1081,7 @@ body {
     font-weight: 500;
 }
 
-/* 进度�?*/
+/* 进度�?*/
 .progress-container {
     margin-top: var(--tx-spacing-lg);
 }
@@ -1476,7 +1513,7 @@ body {
     50% { transform: translateY(-3px); }
 }
 
-/* 抽奖结果中李梦雨的五彩斑斓的黑样�?*/
+/* 抽奖结果中李梦雨的五彩斑斓的黑样�?*/
 .result-badge.web-developer-result {
     background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%) !important;
     border: 4px solid transparent !important;
@@ -1776,7 +1813,7 @@ body {
     font-size: var(--tx-font-size-sm);
 }
 
-/* 空状�?*/
+/* 空状�?*/
 .empty-state {
     text-align: center;
     padding: var(--tx-spacing-xl) 0;
@@ -1790,7 +1827,7 @@ body {
     display: block;
 }
 
-/* 响应式设�?*/
+/* 响应式设�?*/
 @media (max-width: 1024px) {
     .content-wrapper {
         grid-template-columns: 1fr;
@@ -2046,7 +2083,197 @@ body {
 
 
 
-/* �������⿨Ƭ��ԭ����ƹ�� */
+/* 选择学生页面特殊卡片样式 */
+
+/* 前10名学生卡片 */
+.student-card.top-student-card {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.1) 0%, rgba(255, 165, 0, 0.05) 100%);
+    border-color: #FFD700;
+}
+
+.student-card.top-student-card:hover {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 165, 0, 0.1) 100%);
+    border-color: #FFA500;
+}
+
+/* 贾烨标特殊绿色卡片 */
+.student-card.special-green-card {
+    background: linear-gradient(135deg, rgba(7, 193, 96, 0.15) 0%, rgba(6, 173, 86, 0.08) 100%);
+    border-color: var(--tx-primary);
+}
+
+.student-card.special-green-card:hover {
+    background: linear-gradient(135deg, rgba(7, 193, 96, 0.25) 0%, rgba(6, 173, 86, 0.15) 100%);
+}
+
+/* 李梦雨Web Developer卡片 */
+.student-card.web-developer-card {
+    background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    position: relative;
+    overflow: hidden;
+}
+
+.student-card.web-developer-card::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(45deg, #ff0080, #ff8c00, #40e0d0, #8a2be2, #ff0080, #ff8c00, #40e0d0, #8a2be2);
+    background-size: 400% 400%;
+    z-index: -1;
+    border-radius: var(--tx-radius-md);
+    animation: rainbowBorder 3s ease infinite;
+}
+
+.student-card.web-developer-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3), transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3), transparent 50%);
+    pointer-events: none;
+    animation: shimmer 4s ease-in-out infinite;
+}
+
+.student-card.web-developer-card .student-name {
+    color: #ffffff;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}
+
+.student-card.web-developer-card .student-rank {
+    color: #b3b3b3;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* 原鑫椿云朵形状卡片 */
+.student-card.cloud-shaped-card {
+    background: linear-gradient(135deg, rgba(176, 227, 254, 0.3) 0%, rgba(255, 204, 219, 0.2) 100%);
+    border-color: #B0E3FE;
+    border-width: 2px;
+}
+
+.student-card.cloud-shaped-card:hover {
+    background: linear-gradient(135deg, rgba(176, 227, 254, 0.4) 0%, rgba(255, 204, 219, 0.3) 100%);
+}
+
+/* 王鹤凝特殊卡片 */
+.student-card.wang-henning-card {
+    background: linear-gradient(135deg, rgba(255, 182, 193, 0.25) 0%, rgba(255, 105, 180, 0.15) 100%);
+    border-color: #FF69B4;
+}
+
+.student-card.wang-henning-card:hover {
+    background: linear-gradient(135deg, rgba(255, 182, 193, 0.4) 0%, rgba(255, 105, 180, 0.25) 100%);
+}
+
+/* 原梓杰特殊卡片 */
+.student-card.yuan-zijie-card {
+    background: linear-gradient(135deg, rgba(139, 119, 101, 0.2) 0%, rgba(101, 67, 33, 0.15) 100%);
+    border-color: #8B7765;
+}
+
+.student-card.yuan-zijie-card:hover {
+    background: linear-gradient(135deg, rgba(139, 119, 101, 0.35) 0%, rgba(101, 67, 33, 0.25) 100%);
+}
+
+/* 李湣帅五彩斑斓的白卡片 */
+.student-card.colorful-white-card {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 30%, #e9ecef 70%, #ffffff 100%);
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    position: relative;
+    overflow: hidden;
+}
+
+.student-card.colorful-white-card::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(45deg, #ffecd2, #fcb69f, #a8edea, #fed6e3, #d299c2, #fef9d7, #ffecd2, #fcb69f, #a8edea, #fed6e3, #d299c2, #fef9d7);
+    background-size: 400% 400%;
+    z-index: -1;
+    border-radius: var(--tx-radius-md);
+    animation: colorfulWhiteBorder 4s ease infinite;
+}
+
+.student-card.colorful-white-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at 20% 80%, rgba(255, 218, 185, 0.4), transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 192, 203, 0.4), transparent 50%),
+                radial-gradient(circle at 50% 50%, rgba(173, 216, 230, 0.3), transparent 50%);
+    pointer-events: none;
+}
+
+/* 迷你fn图标 */
+.fn-mini-icon {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+    filter: drop-shadow(1px 1px 2px rgba(0, 0, 0, 0.2));
+}
+
+/* 各种徽章样式 */
+.web-dev-badge,
+.special-badge,
+.cloud-badge,
+.wh-badge,
+.yzj-badge,
+.colorful-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    margin-left: 6px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 600;
+    color: white;
+}
+
+.web-dev-badge {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.special-badge {
+    background: linear-gradient(135deg, var(--tx-primary) 0%, var(--tx-primary-dark) 100%);
+}
+
+.cloud-badge {
+    background: linear-gradient(135deg, #B0E3FE 0%, #A8D8F0 100%);
+    color: #1D2129;
+}
+
+.wh-badge {
+    background: linear-gradient(135deg, #FF69B4 0%, #FFB6C1 100%);
+    color: #8B0000;
+}
+
+.yzj-badge {
+    background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+    color: #8B4513;
+}
+
+.colorful-badge {
+    background: linear-gradient(45deg, #ffecd2, #fcb69f, #a8edea);
+    color: #1D2129;
+}
+
+/* 结果徽章特殊样式 */
 .result-badge.cloud-shaped,
 .result-badge.wang-henning,
 .result-badge.yuan-zijie,

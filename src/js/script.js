@@ -11,14 +11,16 @@ class FairWeightedRollCall {
         this.students = students;
         this.guaranteeRatio = options.guaranteeRatio ?? 0.40;
         this.decayFactor = options.decayFactor ?? 0.9;
+
         this.resetPeriod = options.resetPeriod ?? 'per_class';
-        
+        this.silent = options.silent ?? false;
+
         this.pickCounts = {};
         this.history = [];
         students.forEach(s => {
             this.pickCounts[s.id] = 0;
         });
-        
+
         this._precompute();
     }
     
@@ -40,12 +42,14 @@ class FairWeightedRollCall {
         const firstWeight = firstStudent ? this.baseWeights[firstStudent.id] : 0;
         const lastWeight = lastStudent ? this.baseWeights[lastStudent.id] : 0;
         
-        console.log('=== 基础权重预计算结果 ===');
-        console.log(`总权重: ${totalBase.toFixed(4)}`);
-        console.log(`平均权重: ${this.avgBaseWeight.toFixed(4)}`);
-        if (firstStudent) console.log(`第${firstStudent.rank}名(${firstStudent.name})基础权重: ${firstWeight.toFixed(4)}`);
-        if (lastStudent) console.log(`第${lastStudent.rank}名(${lastStudent.name})基础权重: ${lastWeight.toFixed(4)}`);
-        if (firstWeight && lastWeight) console.log(`权重比例: ${(firstWeight / lastWeight).toFixed(2)}:1`);
+        if (!this.silent) {
+            console.log('=== 基础权重预计算结果 ===');
+            console.log(`总权重: ${totalBase.toFixed(4)}`);
+            console.log(`平均权重: ${this.avgBaseWeight.toFixed(4)}`);
+            if (firstStudent) console.log(`第${firstStudent.rank}名(${firstStudent.name})基础权重: ${firstWeight.toFixed(4)}`);
+            if (lastStudent) console.log(`第${lastStudent.rank}名(${lastStudent.name})基础权重: ${lastWeight.toFixed(4)}`);
+            if (firstWeight && lastWeight) console.log(`权重比例: ${(firstWeight / lastWeight).toFixed(2)}:1`);
+        }
     }
     
     _computeFinalWeight(student) {
@@ -225,6 +229,123 @@ class FairWeightedRollCall {
     }
 }
 
+// ============================================================
+// 控制台测试接口：模拟抽取验证概率是否符合频率
+// 用法：在浏览器控制台输入 testRollCallSimulation(100000)
+// ============================================================
+window.testRollCallSimulation = function(simulationCount = 100000) {
+    console.clear();
+    console.log(`=== 开始模拟抽取 ${simulationCount.toLocaleString()} 次 ===\n`);
+
+    // 1. 获取当前选中的学生池（从全局暴露的数据读取）
+    const allStudents = window._rollCallStudents || [];
+    const selectedStudents = window._rollCallSelected || [];
+    const pool = selectedStudents.length > 0 ? [...selectedStudents] : [...allStudents];
+    if (pool.length === 0) {
+        console.error('没有可用的学生数据，请等待页面加载完成后再试');
+        return;
+    }
+
+    // 2. 计算理论概率（基于当前算法配置，无衰减状态）
+    const tempSystem = new FairWeightedRollCall(pool, {
+        guaranteeRatio: 0.25,
+        decayFactor: 0.9,
+        silent: true
+    });
+    const theoretical = tempSystem.getProbabilities();
+
+    // 3. 执行模拟抽取
+    const actualCounts = {};
+    pool.forEach(s => actualCounts[s.id] = 0);
+
+    for (let i = 0; i < simulationCount; i++) {
+        // 每轮都新建实例以消除衰减对长期概率的影响（测试"单次抽取"的理论概率）
+        const sys = new FairWeightedRollCall(pool, {
+            guaranteeRatio: 0.25,
+            decayFactor: 0.9,
+            silent: true
+        });
+        const picked = sys.pickOne();
+        actualCounts[picked.id]++;
+    }
+
+    // 4. 汇总结果
+    const results = pool.map(s => {
+        const t = theoretical.find(p => p.id === s.id);
+        const actualFreq = (actualCounts[s.id] / simulationCount * 100);
+        const theoreticalProb = t ? t.probability : 0;
+        const deviation = actualFreq - theoreticalProb;
+        const deviationPercent = theoreticalProb > 0 ? (deviation / theoreticalProb * 100) : 0;
+
+        return {
+            id: s.id,
+            name: s.name,
+            rank: s.rank,
+            theoreticalProb,
+            actualFreq,
+            deviation,
+            deviationPercent,
+            count: actualCounts[s.id]
+        };
+    }).sort((a, b) => a.rank - b.rank);
+
+    // 5. 打印表格
+    console.log('排名 | 姓名   | 理论概率 | 实际频率 | 绝对偏差 | 相对偏差 | 抽中次数');
+    console.log('-----|--------|----------|----------|----------|----------|----------');
+    results.forEach(r => {
+        console.log(
+            `${r.rank.toString().padStart(4)} | ${r.name.padEnd(6)} | ` +
+            `${r.theoreticalProb.toFixed(4).padStart(8)}% | ${r.actualFreq.toFixed(4).padStart(8)}% | ` +
+            `${(r.deviation >= 0 ? '+' : '') + r.deviation.toFixed(4).padStart(7)}% | ` +
+            `${(r.deviationPercent >= 0 ? '+' : '') + r.deviationPercent.toFixed(2).padStart(7)}% | ` +
+            `${r.count.toLocaleString().padStart(8)}`
+        );
+    });
+
+    // 6. 统计分析
+    const avgDeviation = results.reduce((sum, r) => sum + Math.abs(r.deviation), 0) / results.length;
+    const maxDeviation = Math.max(...results.map(r => Math.abs(r.deviation)));
+    const maxDeviationStudent = results.find(r => Math.abs(r.deviation) === maxDeviation);
+    const totalActualFreq = results.reduce((sum, r) => sum + r.actualFreq, 0);
+
+    console.log('\n=== 统计分析 ===');
+    console.log(`模拟次数: ${simulationCount.toLocaleString()}`);
+    console.log(`参与人数: ${pool.length}`);
+    console.log(`平均绝对偏差: ${avgDeviation.toFixed(4)}%`);
+    console.log(`最大绝对偏差: ${maxDeviation.toFixed(4)}% (${maxDeviationStudent.name} 排名${maxDeviationStudent.rank})`);
+    console.log(`实际频率总和: ${totalActualFreq.toFixed(4)}% (应接近100%)`);
+
+    // 7. 验证：按排名分组统计
+    console.log('\n=== 按排名分组验证 ===');
+    const top10 = results.filter(r => r.rank <= 10);
+    const mid10 = results.filter(r => r.rank > 10 && r.rank <= 20);
+    const rest = results.filter(r => r.rank > 20);
+
+    const groupStats = (group, label) => {
+        const avgTheoretical = group.reduce((s, r) => s + r.theoreticalProb, 0) / group.length;
+        const avgActual = group.reduce((s, r) => s + r.actualFreq, 0) / group.length;
+        console.log(`${label}: 理论平均=${avgTheoretical.toFixed(4)}% 实际平均=${avgActual.toFixed(4)}% 偏差=${(avgActual - avgTheoretical).toFixed(4)}%`);
+    };
+
+    groupStats(top10, '前10名');
+    groupStats(mid10, '11-20名');
+    groupStats(rest,  '21名以后');
+
+    // 8. 简单卡方检验提示
+    console.log('\n=== 卡方检验提示 ===');
+    const chiSquare = results.reduce((sum, r) => {
+        const expected = simulationCount * (r.theoreticalProb / 100);
+        const observed = r.count;
+        return sum + Math.pow(observed - expected, 2) / expected;
+    }, 0);
+    console.log(`卡方统计量: ${chiSquare.toFixed(4)}`);
+    console.log(`自由度: ${results.length - 1}`);
+    console.log('若卡方值过大，说明实际频率与理论概率存在显著差异。');
+
+    console.log('\n=== 模拟完成 ===');
+    return results;
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     const studentNames = [
         '李志敏', '茹柯臻', '胡逸柯', '邢任静', '原鑫椿', '王铖浩', '白淼鑫', '原梓杰', 
@@ -256,6 +377,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     let selectedStudents = [...students];
+    window._rollCallStudents = students;
+    window._rollCallSelected = selectedStudents;
     let history = [];
     let totalDraws = 0;
     let currentResult = [];
@@ -263,7 +386,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let isMusicPlaying = false;
     let isMusicLoading = false;
     let isMusicLoaded = false;
-    let onlyTop11 = false;
+    let onlyTop10 = false;
     let recentHistory = [];
     let randomSeed = Math.floor(Math.random() * 1000000000);
     
@@ -276,7 +399,7 @@ document.addEventListener('DOMContentLoaded', () => {
         selectStudentsBtn: document.getElementById('select-students-btn'),
         drawCountInput: document.getElementById('draw-count-input'),
         startDrawingBtn: document.getElementById('start-drawing-btn'),
-        onlyTop11: document.getElementById('only-top-11'),
+        onlyTop10: document.getElementById('only-top-10'),
         historyList: document.getElementById('history-list'),
         statTotalStudents: document.getElementById('stat-total-students'),
         statSelectedStudents: document.getElementById('stat-selected-students'),
@@ -329,6 +452,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             selectedStudents.push(student);
         }
+        window._rollCallSelected = selectedStudents;
         renderStudentCards();
         updateSelectedCount();
         updateStatistics();
@@ -336,16 +460,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function selectAllStudents() {
         selectedStudents = [...students];
+        window._rollCallSelected = selectedStudents;
         renderStudentCards();
         updateSelectedCount();
         updateStatistics();
     }
 
     function deselectAllStudents() {
-        selectedStudents = [];
+        const currentSelectedIds = new Set(selectedStudents.map(s => s.id));
+        selectedStudents = students.filter(s => !currentSelectedIds.has(s.id));
+        window._rollCallSelected = selectedStudents;
         renderStudentCards();
         updateSelectedCount();
         updateStatistics();
+
+        if (onlyTop10) {
+            const hasNonTop10 = selectedStudents.some(s => s.rank > 10);
+            if (hasNonTop10) {
+                onlyTop10 = false;
+                if (DOM.onlyTop10) {
+                    DOM.onlyTop10.checked = false;
+                }
+                showToast('提示', '已取消"仅抽取前10名"限制');
+            }
+        }
     }
 
     function confirmSelection() {
@@ -361,6 +499,12 @@ document.addEventListener('DOMContentLoaded', () => {
         DOM.modalOverlay.style.display = 'flex';
         DOM.modalOverlay.setAttribute('aria-hidden', 'false');
         document.body.style.overflow = 'hidden';
+        
+        if (onlyTop10) {
+            selectedStudents = students.filter(s => s.rank <= 10);
+            updateSelectedCount();
+        }
+        
         renderStudentCards();
     }
 
@@ -384,22 +528,50 @@ document.addEventListener('DOMContentLoaded', () => {
         let html = '<div class="student-grid">';
         students.forEach(student => {
             const selected = isSelected(student);
-            const webDevClass = student.isWebDeveloper ? ' web-developer' : '';
             const selectedClass = selected ? ' selected' : '';
             
+            let cardClasses = '';
+            if (student.rank <= 10) cardClasses += ' top-student-card';
+            if (student.isSpecial) cardClasses += ' special-green-card';
+            if (student.isWebDeveloper) cardClasses += ' web-developer-card';
+            if (student.isCloudShaped) cardClasses += ' cloud-shaped-card';
+            if (student.isWangHenning) cardClasses += ' wang-henning-card';
+            if (student.isYuanZijie) cardClasses += ' yuan-zijie-card';
+            if (student.isColorfulWhite) cardClasses += ' colorful-white-card';
+            
+            let avatarIcon = '';
+            if (student.hasFnIcon) {
+                avatarIcon = `<img src="src/assets/fn.webp" class="fn-mini-icon" alt="fn" width="24" height="24">`;
+            }
+            
+            let nameBadge = '';
+            if (student.isWebDeveloper) {
+                nameBadge = '<span class="web-dev-badge"><i class="fas fa-code"></i></span>';
+            } else if (student.isSpecial) {
+                nameBadge = '<span class="special-badge"><i class="fas fa-star"></i></span>';
+            } else if (student.isCloudShaped) {
+                nameBadge = '<span class="cloud-badge"><i class="fas fa-cloud"></i></span>';
+            } else if (student.isWangHenning) {
+                nameBadge = '<span class="wh-badge"><i class="fas fa-paw"></i></span>';
+            } else if (student.isYuanZijie) {
+                nameBadge = '<span class="yzj-badge"><i class="fas fa-crown"></i></span>';
+            } else if (student.isColorfulWhite) {
+                nameBadge = '<span class="colorful-badge"><i class="fas fa-palette"></i></span>';
+            }
+            
             html += `
-                <div class="student-card${selectedClass}${webDevClass}" 
+                <div class="student-card${selectedClass}${cardClasses}" 
                      data-student-id="${student.id}" 
                      tabindex="0"
                      aria-selected="${selected}"
                      role="option">
-                    <div class="student-avatar ${student.rank <= 11 ? 'top-student' : ''}">
-                        ${student.name.charAt(0)}
+                    <div class="student-avatar ${student.rank <= 10 ? 'top-student' : ''}">
+                        ${avatarIcon || student.name.charAt(0)}
                     </div>
                     <div class="student-info">
                         <div class="student-name">
                             ${student.name}
-                            ${student.isWebDeveloper ? '<span class="web-dev-badge"><i class="fas fa-code"></i> Web Developer</span>' : ''}
+                            ${nameBadge}
                         </div>
                         <div class="student-rank">第${student.rank}名</div>
                     </div>
@@ -483,24 +655,24 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             if (student.isWangHenning) {
-                innerHtml += '<img src="dog.svg" class="result-icon result-icon-left" alt="dog">';
+                innerHtml += '<img src="src/assets/dog.svg" class="result-icon result-icon-left" alt="dog">';
             }
             
             innerHtml += `<span class="badge-name">${student.name}`;
             if (student.hasFnIcon) {
-                innerHtml += '<img src="fn.webp" class="fn-icon" alt="fn" width="42" height="42">';
+                innerHtml += '<img src="src/assets/fn.webp" class="fn-icon" alt="fn" width="42" height="42">';
             }
             innerHtml += '</span>';
             
             if (student.isWangHenning) {
-                innerHtml += '<img src="cat.svg" class="result-icon result-icon-right" alt="cat">';
+                innerHtml += '<img src="src/assets/cat.svg" class="result-icon result-icon-right" alt="cat">';
             }
             
             if (student.isWebDeveloper) {
                 innerHtml += '<span class="web-dev-mini-badge"><i class="fas fa-code"></i></span>';
             }
             
-            innerHtml += `<span class="badge-rank">#${student.rank}</span>`;
+            innerHtml += `<span class="badge-rank highlight-rank">第${student.rank}名</span>`;
             
             html += `<span class="${classes.join(' ')}">${innerHtml}</span>`;
         });
@@ -572,10 +744,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isRolling) return;
 
         let eligibleStudents = [...selectedStudents];
-        if (onlyTop11) {
-            eligibleStudents = eligibleStudents.filter(s => s.rank <= 11);
+        if (onlyTop10) {
+            eligibleStudents = eligibleStudents.filter(s => s.rank <= 10);
             if (eligibleStudents.length === 0) {
-                showToast('提示', '当前选择的学生中没有前11名学生');
+                showToast('提示', '当前选择的学生中没有前10名学生');
                 return;
             }
         }
@@ -597,7 +769,7 @@ document.addEventListener('DOMContentLoaded', () => {
             fakeoutDuration: 200,
             finalDecelerationDuration: 200,
             fakeoutIntensity: 0.5,
-            frameDuration: 10
+            frameDuration: 16
         };
 
         const initialAccelFrames = Math.round(animationConfig.initialAccelerationDuration / animationConfig.frameDuration);
@@ -605,9 +777,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const fakeoutFrames = Math.round(animationConfig.fakeoutDuration / animationConfig.frameDuration);
         const finalDecelFrames = Math.round(animationConfig.finalDecelerationDuration / animationConfig.frameDuration);
         const totalFrames = initialAccelFrames + misleadDecelFrames + fakeoutFrames + finalDecelFrames;
+        const actualDuration = totalFrames * animationConfig.frameDuration;
 
         let currentFrame = 0;
         let currentIndex = 0;
+        let animationFrameId = null;
         
         const misleadTargetIndex = Math.floor(seededRandom(randomSeed) * eligibleStudents.length);
         randomSeed++;
@@ -692,9 +866,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 isRolling = false;
                 DOM.startDrawingBtn.innerHTML = '<i class="fas fa-play"></i>开始抽取';
                 DOM.startDrawingBtn.disabled = false;
-                showToast('提示', '抽取过程超时，请重试');
+                if (animationFrameId) {
+                    cancelAnimationFrame(animationFrameId);
+                    animationFrameId = null;
+                }
             }
-        }, animationConfig.totalDuration + 200);
+        }, actualDuration + 2000);
 
         function animateRolling() {
             try {
@@ -704,7 +881,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     currentResult = [eligibleStudents[currentIndex]];
                     renderResult(currentResult);
                     currentFrame++;
-                    setTimeout(animateRolling, animationConfig.frameDuration);
+                    animationFrameId = requestAnimationFrame(animateRolling);
                 } else {
                     currentResult = finalResult;
                     renderResult(currentResult);
@@ -727,6 +904,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     DOM.startDrawingBtn.innerHTML = '<i class="fas fa-play"></i>开始抽取';
                     DOM.startDrawingBtn.disabled = false;
                     clearTimeout(timeoutId);
+                    if (animationFrameId) {
+                        cancelAnimationFrame(animationFrameId);
+                        animationFrameId = null;
+                    }
                     renderHistory();
                     updateStatistics();
                     showToast('成功', `已抽取${count}名学生`);
@@ -848,8 +1029,8 @@ document.addEventListener('DOMContentLoaded', () => {
         DOM.selectAllBtn.addEventListener('click', selectAllStudents);
         DOM.deselectAllBtn.addEventListener('click', deselectAllStudents);
         DOM.startDrawingBtn.addEventListener('click', startDrawing);
-        DOM.onlyTop11.addEventListener('change', (e) => {
-            onlyTop11 = e.target.checked;
+        DOM.onlyTop10.addEventListener('change', (e) => {
+            onlyTop10 = e.target.checked;
         });
         DOM.musicBtn.addEventListener('click', toggleMusic);
         
@@ -880,7 +1061,10 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log(`概率比例: ${stats.probabilityRatio}`);
     }
 
+
     init();
+
+    console.log('%c[测试接口已加载] 在控制台输入 testRollCallSimulation(100000) 即可模拟抽取10万次', 'color: #2ecc71; font-weight: bold;');
 });
 
 /**
