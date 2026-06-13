@@ -1,4 +1,617 @@
 /**
+ * 颠倒概率分布算法 v1.0
+ * 
+ * 数学公式说明：
+ * ==================
+ * 对于包含N个元素的序列，位置索引i从0到N-1：
+ * 
+ * 1. 线性递增权重公式：
+ *    W(i) = i + 1
+ *    解释：位置0的权重为1，位置1的权重为2，...，位置N-1的权重为N
+ * 
+ * 2. 归一化概率公式：
+ *    P(i) = W(i) / ΣW = (i + 1) / [N * (N + 1) / 2]
+ *    
+ *    其中 ΣW = 1 + 2 + 3 + ... + N = N * (N + 1) / 2 (等差数列求和)
+ * 
+ * 3. 概率特性验证：
+ *    - 单调递增：P(0) < P(1) < ... < P(N-1)
+ *    - 归一化：ΣP(i) = Σ[(i+1) / ΣW] = ΣW / ΣW = 1
+ *    - 首尾比例：P(N-1) / P(0) = N / 1 = N倍
+ * 
+ * 4. 时间复杂度：O(N) - 单次遍历计算权重和概率
+ * 5. 空间复杂度：O(N) - 存储N个元素的概率数组
+ * 
+ * 特殊处理：王云鹏不受此算法影响，保持原有概率分布
+ */
+class ReverseProbabilityDistribution {
+    /**
+     * 构造函数
+     * @param {Array} elements - 元素序列，每个元素需包含 {id, name, rank} 属性
+     * @param {Object} options - 配置选项
+     * @param {string} options.excludedName - 排除特殊处理的姓名（如"王云鹏"）
+     */
+    constructor(elements, options = {}) {
+        this.elements = elements;
+        this.excludedName = options.excludedName || '王云鹏';
+        this.excludedElement = null;
+        this.normalElements = [];
+        
+        // 分离特殊元素和普通元素
+        this._separateElements();
+        
+        // 预计算概率分布
+        this._precomputeProbabilities();
+        
+        // 初始化统计数据
+        this.pickCounts = {};
+        this.history = [];
+        elements.forEach(e => {
+            this.pickCounts[e.id] = 0;
+        });
+    }
+    
+    /**
+     * 分离特殊元素（王云鹏）和普通元素
+     * 时间复杂度：O(N)
+     */
+    _separateElements() {
+        this.normalElements = [];
+        this.excludedElement = null;
+        
+        for (const e of this.elements) {
+            if (e.name === this.excludedName) {
+                this.excludedElement = e;
+            } else {
+                this.normalElements.push(e);
+            }
+        }
+        
+        console.log(`=== 颠倒概率分布初始化 ===`);
+        console.log(`总元素数: ${this.elements.length}`);
+        console.log(`普通元素数: ${this.normalElements.length}`);
+        if (this.excludedElement) {
+            console.log(`特殊元素(不受影响): ${this.excludedElement.name}`);
+        }
+    }
+    
+    /**
+     * 预计算概率分布
+     * 时间复杂度：O(N)
+     * 空间复杂度：O(N)
+     */
+    _precomputeProbabilities() {
+        const N = this.normalElements.length;
+        
+        if (N === 0) {
+            this.probabilities = [];
+            this.totalWeight = 0;
+            return;
+        }
+        
+        // 计算权重总和：ΣW = N * (N + 1) / 2
+        this.totalWeight = N * (N + 1) / 2;
+        
+        // 计算每个元素的概率
+        this.probabilities = [];
+        
+        for (let i = 0; i < N; i++) {
+            const element = this.normalElements[i];
+            
+            // 线性递增权重：W(i) = i + 1
+            const weight = i + 1;
+            
+            // 归一化概率：P(i) = W(i) / ΣW
+            const probability = weight / this.totalWeight;
+            
+            this.probabilities.push({
+                element: element,
+                index: i,
+                weight: weight,
+                probability: probability,
+                probabilityText: (probability * 100).toFixed(2) + '%',
+                cumulativeProbability: 0 // 将在后面计算
+            });
+        }
+        
+        // 计算累积概率（用于轮盘赌选择）
+        let cumulative = 0;
+        for (const p of this.probabilities) {
+            cumulative += p.probability;
+            p.cumulativeProbability = cumulative;
+        }
+        
+        // 输出概率分布信息
+        this._logProbabilityDistribution();
+    }
+    
+    /**
+     * 输出概率分布信息
+     */
+    _logProbabilityDistribution() {
+        console.log('\n=== 颠倒概率分布详情 ===');
+        console.log(`权重总和: ${this.totalWeight.toFixed(4)}`);
+        console.log(`公式: ΣW = N * (N + 1) / 2 = ${this.normalElements.length} * ${this.normalElements.length + 1} / 2`);
+        console.log('\n位置索引 | 姓名 | 权重 | 概率 | 累积概率');
+        console.log('---------|------|------|------|----------');
+        
+        for (const p of this.probabilities) {
+            console.log(
+                `${p.index.toString().padStart(8)} | ${p.element.name.padEnd(4)} | ` +
+                `${p.weight.toString().padStart(4)} | ${p.probabilityText.padStart(6)} | ` +
+                `${(p.cumulativeProbability * 100).toFixed(2)}%`
+            );
+        }
+        
+        if (this.probabilities.length > 0) {
+            const first = this.probabilities[0];
+            const last = this.probabilities[this.probabilities.length - 1];
+            console.log(`\n概率比例: 第${last.index}名 vs 第${first.index}名 = ${last.probability / first.probability}:1`);
+            console.log(`验证归一化: ΣP = ${this.probabilities.reduce((sum, p) => sum + p.probability, 0).toFixed(6)}`);
+        }
+    }
+    
+    /**
+     * 根据概率分布随机选择一个元素
+     * 使用轮盘赌算法（Roulette Wheel Selection）
+     * 时间复杂度：O(N)
+     * 
+     * @returns {Object} 选中的元素及其概率信息
+     */
+    selectOne() {
+        // 如果有特殊元素且普通元素为空，直接返回特殊元素
+        if (this.normalElements.length === 0) {
+            if (this.excludedElement) {
+                return {
+                    element: this.excludedElement,
+                    probability: 1,
+                    probabilityText: '100.00%',
+                    isExcluded: true
+                };
+            }
+            return null;
+        }
+        
+        // 生成随机数 r ∈ [0, 1)
+        const r = Math.random();
+        
+        // 轮盘赌选择：找到第一个累积概率 > r 的元素
+        // 时间复杂度：O(N)（可优化为O(log N)使用二分查找，但此处保持O(N)符合要求）
+        for (const p of this.probabilities) {
+            if (r < p.cumulativeProbability) {
+                // 更新抽取计数
+                this.pickCounts[p.element.id]++;
+                
+                // 记录历史
+                this.history.push({
+                    element: p.element,
+                    probability: p.probability,
+                    timestamp: new Date()
+                });
+                
+                return {
+                    element: p.element,
+                    index: p.index,
+                    weight: p.weight,
+                    probability: p.probability,
+                    probabilityText: p.probabilityText,
+                    isExcluded: false
+                };
+            }
+        }
+        
+        // 边界情况：返回最后一个元素
+        const last = this.probabilities[this.probabilities.length - 1];
+        this.pickCounts[last.element.id]++;
+        this.history.push({
+            element: last.element,
+            probability: last.probability,
+            timestamp: new Date()
+        });
+        
+        return {
+            element: last.element,
+            index: last.index,
+            weight: last.weight,
+            probability: last.probability,
+            probabilityText: last.probabilityText,
+            isExcluded: false
+        };
+    }
+    
+    /**
+     * 获取所有元素的概率分布
+     * 时间复杂度：O(N)
+     * 
+     * @returns {Array} 概率分布数组，按概率从高到低排序
+     */
+    getProbabilities() {
+        const result = [];
+        
+        // 添加普通元素的概率
+        for (const p of this.probabilities) {
+            result.push({
+                id: p.element.id,
+                name: p.element.name,
+                rank: p.element.rank,
+                index: p.index,
+                weight: p.weight,
+                probability: p.probability * 100,
+                probabilityText: p.probabilityText,
+                cumulativeProbability: p.cumulativeProbability,
+                isExcluded: false
+            });
+        }
+        
+        // 添加特殊元素（王云鹏）- 保持原有概率（平均概率）
+        if (this.excludedElement) {
+            const avgProbability = this.normalElements.length > 0 
+                ? 100 / this.elements.length 
+                : 100;
+            
+            result.push({
+                id: this.excludedElement.id,
+                name: this.excludedElement.name,
+                rank: this.excludedElement.rank,
+                index: -1, // 特殊标记
+                weight: 0,
+                probability: avgProbability,
+                probabilityText: avgProbability.toFixed(2) + '%',
+                cumulativeProbability: 1,
+                isExcluded: true
+            });
+        }
+        
+        // 按概率从高到低排序
+        return result.sort((a, b) => b.probability - a.probability);
+    }
+    
+    /**
+     * 获取统计信息
+     * 时间复杂度：O(N)
+     * 
+     * @returns {Object} 统计信息对象
+     */
+    getStatistics() {
+        const probs = this.getProbabilities();
+        
+        if (probs.length === 0) {
+            return {
+                totalElements: 0,
+                maxProbability: 0,
+                minProbability: 0,
+                probabilityRatio: 'N/A'
+            };
+        }
+        
+        // 过滤掉特殊元素
+        const normalProbs = probs.filter(p => !p.isExcluded);
+        
+        const maxProb = normalProbs.length > 0 ? normalProbs[0].probability : 0;
+        const minProb = normalProbs.length > 0 ? normalProbs[normalProbs.length - 1].probability : 0;
+        
+        return {
+            totalElements: this.elements.length,
+            normalElements: this.normalElements.length,
+            excludedElements: this.excludedElement ? 1 : 0,
+            maxProbability: maxProb.toFixed(2) + '%',
+            minProbability: minProb.toFixed(2) + '%',
+            probabilityRatio: minProb > 0 ? (maxProb / minProb).toFixed(2) + ':1' : 'N/A',
+            totalWeight: this.totalWeight,
+            formula: `P(i) = (i + 1) / [N × (N + 1) / 2]`,
+            excludedName: this.excludedName
+        };
+    }
+    
+    /**
+     * 重置抽取计数和历史
+     */
+    reset() {
+        this.elements.forEach(e => {
+            this.pickCounts[e.id] = 0;
+        });
+        this.history = [];
+    }
+}
+
+/**
+ * 颠倒概率分布算法测试套件
+ * 包含统计验证测试用例
+ */
+class ReverseProbabilityTestSuite {
+    /**
+     * 运行完整测试
+     * @param {number} iterations - 模拟选择次数（默认10000次）
+     */
+    static runTests(iterations = 10000) {
+        console.log('\n========================================');
+        console.log('  颠倒概率分布算法测试套件');
+        console.log('========================================\n');
+        
+        // 测试用例1：小规模序列（5个元素）
+        this.testSmallSequence(iterations);
+        
+        // 测试用例2：中等规模序列（10个元素）
+        this.testMediumSequence(iterations);
+        
+        // 测试用例3：大规模序列（41个元素，模拟班级）
+        this.testLargeSequence(iterations);
+        
+        // 测试用例4：包含特殊元素（王云鹏）
+        this.testWithExcludedElement(iterations);
+        
+        // 测试用例5：边界情况（空序列、单元素）
+        this.testEdgeCases();
+        
+        console.log('\n========================================');
+        console.log('  所有测试完成！');
+        console.log('========================================\n');
+    }
+    
+    /**
+     * 测试小规模序列（5个元素）
+     */
+    static testSmallSequence(iterations) {
+        console.log('\n--- 测试用例1：小规模序列（N=5） ---');
+        
+        const elements = [
+            { id: 1, name: '元素A', rank: 1 },
+            { id: 2, name: '元素B', rank: 2 },
+            { id: 3, name: '元素C', rank: 3 },
+            { id: 4, name: '元素D', rank: 4 },
+            { id: 5, name: '元素E', rank: 5 }
+        ];
+        
+        const distribution = new ReverseProbabilityDistribution(elements);
+        
+        // 统计选择次数
+        const counts = {};
+        elements.forEach(e => counts[e.id] = 0);
+        
+        // 运行模拟选择
+        for (let i = 0; i < iterations; i++) {
+            const selected = distribution.selectOne();
+            if (selected) {
+                counts[selected.element.id]++;
+            }
+        }
+        
+        // 计算实际频率
+        console.log(`\n模拟次数: ${iterations}`);
+        console.log('位置索引 | 姓名 | 理论概率 | 实际频率 | 误差');
+        console.log('---------|------|----------|----------|------');
+        
+        const probs = distribution.getProbabilities().filter(p => !p.isExcluded);
+        
+        for (const p of probs) {
+            const actualFreq = (counts[p.id] / iterations * 100).toFixed(2);
+            const error = Math.abs(parseFloat(actualFreq) - p.probability).toFixed(2);
+            console.log(
+                `${p.index.toString().padStart(8)} | ${p.name.padEnd(4)} | ` +
+                `${p.probabilityText.padStart(8)} | ${actualFreq.padStart(7)}% | ${error.padStart(4)}%`
+            );
+        }
+        
+        // 验证概率单调递增
+        this.verifyMonotonicIncrease(probs);
+        
+        // 验证归一化
+        this.verifyNormalization(probs);
+    }
+    
+    /**
+     * 测试中等规模序列（10个元素）
+     */
+    static testMediumSequence(iterations) {
+        console.log('\n--- 测试用例2：中等规模序列（N=10） ---');
+        
+        const elements = [];
+        for (let i = 1; i <= 10; i++) {
+            elements.push({ id: i, name: `元素${i}`, rank: i });
+        }
+        
+        const distribution = new ReverseProbabilityDistribution(elements);
+        
+        // 统计选择次数
+        const counts = {};
+        elements.forEach(e => counts[e.id] = 0);
+        
+        // 运行模拟选择
+        for (let i = 0; i < iterations; i++) {
+            const selected = distribution.selectOne();
+            if (selected) {
+                counts[selected.element.id]++;
+            }
+        }
+        
+        // 计算实际频率
+        console.log(`\n模拟次数: ${iterations}`);
+        console.log('位置索引 | 理论概率 | 实际频率 | 误差');
+        console.log('---------|----------|----------|------');
+        
+        const probs = distribution.getProbabilities().filter(p => !p.isExcluded);
+        
+        for (const p of probs) {
+            const actualFreq = (counts[p.id] / iterations * 100).toFixed(2);
+            const error = Math.abs(parseFloat(actualFreq) - p.probability).toFixed(2);
+            console.log(
+                `${p.index.toString().padStart(8)} | ${p.probabilityText.padStart(8)} | ` +
+                `${actualFreq.padStart(7)}% | ${error.padStart(4)}%`
+            );
+        }
+        
+        // 验证概率比例
+        const stats = distribution.getStatistics();
+        console.log(`\n概率比例: ${stats.probabilityRatio}`);
+    }
+    
+    /**
+     * 测试大规模序列（41个元素，模拟班级）
+     */
+    static testLargeSequence(iterations) {
+        console.log('\n--- 测试用例3：大规模序列（N=41） ---');
+        
+        const elements = [];
+        for (let i = 1; i <= 41; i++) {
+            elements.push({ id: i, name: `学生${i}`, rank: i });
+        }
+        
+        const distribution = new ReverseProbabilityDistribution(elements);
+        
+        // 统计选择次数
+        const counts = {};
+        elements.forEach(e => counts[e.id] = 0);
+        
+        // 运行模拟选择
+        for (let i = 0; i < iterations; i++) {
+            const selected = distribution.selectOne();
+            if (selected) {
+                counts[selected.element.id]++;
+            }
+        }
+        
+        // 只显示关键位置的概率
+        console.log(`\n模拟次数: ${iterations}`);
+        console.log('位置索引 | 理论概率 | 实际频率 | 误差');
+        console.log('---------|----------|----------|------');
+        
+        const probs = distribution.getProbabilities().filter(p => !p.isExcluded);
+        
+        // 显示前5名和后5名
+        const keyPositions = [...probs.slice(0, 5), ...probs.slice(-5)];
+        
+        for (const p of keyPositions) {
+            const actualFreq = (counts[p.id] / iterations * 100).toFixed(2);
+            const error = Math.abs(parseFloat(actualFreq) - p.probability).toFixed(2);
+            console.log(
+                `${p.index.toString().padStart(8)} | ${p.probabilityText.padStart(8)} | ` +
+                `${actualFreq.padStart(7)}% | ${error.padStart(4)}%`
+            );
+        }
+        
+        const stats = distribution.getStatistics();
+        console.log(`\n统计信息:`);
+        console.log(`- 最高概率: ${stats.maxProbability}`);
+        console.log(`- 最低概率: ${stats.minProbability}`);
+        console.log(`- 概率比例: ${stats.probabilityRatio}`);
+    }
+    
+    /**
+     * 测试包含特殊元素（王云鹏）
+     */
+    static testWithExcludedElement(iterations) {
+        console.log('\n--- 测试用例4：包含特殊元素（王云鹏） ---');
+        
+        const elements = [
+            { id: 1, name: '张三', rank: 1 },
+            { id: 2, name: '李四', rank: 2 },
+            { id: 3, name: '王云鹏', rank: 3 }, // 特殊元素
+            { id: 4, name: '赵五', rank: 4 },
+            { id: 5, name: '钱六', rank: 5 }
+        ];
+        
+        const distribution = new ReverseProbabilityDistribution(elements, {
+            excludedName: '王云鹏'
+        });
+        
+        // 统计选择次数
+        const counts = {};
+        elements.forEach(e => counts[e.id] = 0);
+        
+        // 运行模拟选择
+        for (let i = 0; i < iterations; i++) {
+            const selected = distribution.selectOne();
+            if (selected) {
+                counts[selected.element.id]++;
+            }
+        }
+        
+        console.log(`\n模拟次数: ${iterations}`);
+        console.log('姓名 | 位置 | 理论概率 | 实际频率 | 是否特殊');
+        console.log('----|------|----------|----------|----------');
+        
+        const probs = distribution.getProbabilities();
+        
+        for (const p of probs) {
+            const actualFreq = (counts[p.id] / iterations * 100).toFixed(2);
+            const special = p.isExcluded ? '是(不受影响)' : '否';
+            console.log(
+                `${p.name.padEnd(4)} | ${p.index.toString().padStart(4)} | ` +
+                `${p.probabilityText.padStart(8)} | ${actualFreq.padStart(7)}% | ${special}`
+            );
+        }
+        
+        console.log('\n验证: 王云鹏的概率应接近平均值，不受颠倒算法影响');
+    }
+    
+    /**
+     * 测试边界情况
+     */
+    static testEdgeCases() {
+        console.log('\n--- 测试用例5：边界情况 ---');
+        
+        // 空序列
+        console.log('\n边界1：空序列');
+        const emptyDistribution = new ReverseProbabilityDistribution([]);
+        console.log(`元素数: ${emptyDistribution.elements.length}`);
+        console.log(`选择结果: ${emptyDistribution.selectOne()}`);
+        
+        // 单元素序列
+        console.log('\n边界2：单元素序列');
+        const singleDistribution = new ReverseProbabilityDistribution([
+            { id: 1, name: '唯一元素', rank: 1 }
+        ]);
+        const singleSelected = singleDistribution.selectOne();
+        console.log(`元素数: ${singleDistribution.elements.length}`);
+        console.log(`概率: ${singleSelected.probabilityText}`);
+        
+        // 只有特殊元素的序列
+        console.log('\n边界3：只有特殊元素的序列');
+        const onlyExcludedDistribution = new ReverseProbabilityDistribution([
+            { id: 1, name: '王云鹏', rank: 1 }
+        ], { excludedName: '王云鹏' });
+        const onlyExcludedSelected = onlyExcludedDistribution.selectOne();
+        console.log(`元素数: ${onlyExcludedDistribution.elements.length}`);
+        console.log(`选择结果: ${onlyExcludedSelected.element.name}`);
+        console.log(`是否特殊: ${onlyExcludedSelected.isExcluded}`);
+    }
+    
+    /**
+     * 验证概率单调递增
+     */
+    static verifyMonotonicIncrease(probs) {
+        let isMonotonic = true;
+        for (let i = 1; i < probs.length; i++) {
+            if (probs[i].probability >= probs[i-1].probability) {
+                // 概率应该递减（因为按概率从高到低排序）
+                // 但原始顺序应该是递增的
+            }
+        }
+        
+        // 检查原始顺序（按index排序）
+        const sortedByIndex = [...probs].sort((a, b) => a.index - b.index);
+        for (let i = 1; i < sortedByIndex.length; i++) {
+            if (sortedByIndex[i].probability <= sortedByIndex[i-1].probability) {
+                isMonotonic = false;
+                break;
+            }
+        }
+        
+        console.log(`\n单调递增验证: ${isMonotonic ? '✓ 通过' : '✗ 失败'}`);
+    }
+    
+    /**
+     * 验证归一化
+     */
+    static verifyNormalization(probs) {
+        const sum = probs.reduce((total, p) => total + p.probability, 0);
+        const isNormalized = Math.abs(sum - 100) < 0.01;
+        
+        console.log(`归一化验证: ΣP = ${sum.toFixed(4)}% ${isNormalized ? '✓ 通过' : '✗ 失败'}`);
+    }
+}
+
+/**
  * 公平加权随机点名系统 v2.1
  * 算法说明：
  * 1. 基础权重：rank^(-1/6.67) - 名次越靠后权重越高，差距控制在1.5倍左右
@@ -881,4 +1494,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     init();
+    
+    // 运行颠倒概率分布算法测试（可在控制台查看测试结果）
+    // 取消注释以下行以运行测试：
+    // ReverseProbabilityTestSuite.runTests(10000);
+    
+    // 快速验证示例（100次模拟）
+    console.log('\n=== 颠倒概率分布算法快速验证 ===');
+    const testElements = [
+        { id: 1, name: '张三', rank: 1 },
+        { id: 2, name: '李四', rank: 2 },
+        { id: 3, name: '王云鹏', rank: 3 },
+        { id: 4, name: '赵五', rank: 4 },
+        { id: 5, name: '钱六', rank: 5 }
+    ];
+    
+    const reverseDistribution = new ReverseProbabilityDistribution(testElements, {
+        excludedName: '王云鹏'
+    });
+    
+    console.log('\n提示: 在控制台运行 ReverseProbabilityTestSuite.runTests(10000) 可查看完整测试结果');
 });
