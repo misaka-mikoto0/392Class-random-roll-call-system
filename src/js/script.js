@@ -721,12 +721,49 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
 
         groupResults.forEach(group => {
-            const memberBadges = group.members.map(member => {
+            const memberCards = group.members.map(member => {
+                let cardClasses = ['group-member-card'];
+                if (member.rank <= 11) cardClasses.push('golden');
+                if (member.isSpecial) cardClasses.push('special-green');
+                if (member.isWebDeveloper) cardClasses.push('web-developer-result');
+                if (member.isCloudShaped) cardClasses.push('cloud-shaped');
+                if (member.isWangHenning) cardClasses.push('wang-henning');
+                if (member.isYuanZijie) cardClasses.push('yuan-zijie');
+                if (member.isColorfulWhite) cardClasses.push('colorful-white');
+
+                if (member.rank > 11 && !member.isSpecial && !member.isWebDeveloper &&
+                    !member.isCloudShaped && !member.isWangHenning && !member.isYuanZijie && !member.isColorfulWhite) {
+                    cardClasses.push('blue');
+                }
+
+                let nameContent = member.name;
+                if (member.hasFnIcon) {
+                    nameContent += '<img src="src/assets/fn.webp" class="fn-mini-icon" alt="fn" width="20" height="20">';
+                }
+
+                let badge = '';
+                if (member.isWebDeveloper) {
+                    badge = '<span class="member-badge web-dev"><i class="fas fa-code"></i></span>';
+                } else if (member.isSpecial) {
+                    badge = '<span class="member-badge special"><i class="fas fa-star"></i></span>';
+                } else if (member.isCloudShaped) {
+                    badge = '<span class="member-badge cloud"><i class="fas fa-cloud"></i></span>';
+                } else if (member.isWangHenning) {
+                    badge = '<span class="member-badge wh"><i class="fas fa-paw"></i></span>';
+                } else if (member.isYuanZijie) {
+                    badge = '<span class="member-badge yzj"><i class="fas fa-crown"></i></span>';
+                } else if (member.isColorfulWhite) {
+                    badge = '<span class="member-badge colorful"><i class="fas fa-palette"></i></span>';
+                }
+
                 return `
-                    <span class="group-member-badge">
-                        ${member.name}
-                        <span class="member-rank">第${member.rank}名</span>
-                    </span>
+                    <div class="${cardClasses.join(' ')}">
+                        <div class="member-name">
+                            ${nameContent}
+                            ${badge}
+                        </div>
+                        <div class="member-rank">第${member.rank}名</div>
+                    </div>
                 `;
             }).join('');
 
@@ -735,9 +772,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="group-result-header">
                         <i class="fas fa-users"></i>
                         <span class="group-result-name">${group.name}</span>
+                        <span class="group-result-count">${group.members.length} 人</span>
                     </div>
                     <div class="group-members">
-                        ${memberBadges}
+                        ${memberCards}
                     </div>
                 </div>
             `;
