@@ -369,8 +369,28 @@ document.addEventListener('DOMContentLoaded', () => {
         isColorfulWhite: name === '李湣帅'
     }));
 
+    // 小组定义
+    const groupDefinitions = [
+        { name: '一组', members: ['李志敏', '张艺瀚', '张祺曼', '贾烨标'] },
+        { name: '二组', members: ['茹柯臻', '原章恬', '元静怡', '延泽玉'] },
+        { name: '三组', members: ['胡逸柯', '王彦景', '王鹤凝', '樊师彤'] },
+        { name: '四组', members: ['邢任静', '史梓瑜', '成浩宇', '赵育敏'] },
+        { name: '五组', members: ['原鑫椿', '李梦雨', '李湣帅', '赵渊博'] },
+        { name: '六组', members: ['王铖浩', '李帅辉', '晋奥钊', '赵晨旭', '李昀宵'] },
+        { name: '七组', members: ['白淼鑫', '刘艺博', '杜桓荣', '段晶晶'] },
+        { name: '八组', members: ['原梓杰', '李怡萱', '王云鹏', '段培清'] },
+        { name: '九组', members: ['崔恒语', '张浩楠', '马梓宁', '白阳兰'] },
+        { name: '十组', members: ['蒋鹕涛', '冯炜杰', '焦雅琦', '马欣怡'] }
+    ];
+
+    const groups = groupDefinitions.map((g, index) => ({
+        id: index + 1,
+        name: g.name,
+        members: g.members.map(name => students.find(s => s.name === name)).filter(Boolean)
+    }));
+
     const rollCallSystem = new FairWeightedRollCall(students);
-    
+
     const studentPickCounts = {};
     students.forEach(s => {
         studentPickCounts[s.id] = 0;
@@ -387,6 +407,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let isMusicLoading = false;
     let isMusicLoaded = false;
     let onlyTop10 = false;
+    let drawMode = 'individual';
     let recentHistory = [];
     let randomSeed = Math.floor(Math.random() * 1000000000);
     
@@ -420,7 +441,8 @@ document.addEventListener('DOMContentLoaded', () => {
         toastTitle: document.getElementById('toast-title'),
         toastMessage: document.getElementById('toast-message'),
         toastContainer: document.getElementById('toast-container'),
-        musicBtn: document.getElementById('music-btn')
+        musicBtn: document.getElementById('music-btn'),
+        drawModeToggle: document.getElementById('draw-mode-toggle')
     };
 
     function updateStatistics() {
@@ -681,6 +703,50 @@ document.addEventListener('DOMContentLoaded', () => {
         DOM.resultDisplay.innerHTML = html;
     }
 
+    function renderGroupResult(groupResults) {
+        if (!groupResults || groupResults.length === 0) {
+            DOM.resultDisplay.innerHTML = `
+                <div class="placeholder-text">
+                    <i class="fas fa-random"></i>
+                    <p>点击下方按钮开始抽取</p>
+                    <p>系统将公平随机选择小组</p>
+                </div>
+            `;
+            return;
+        }
+
+        let html = `
+            <div class="result-title">抽取结果</div>
+            <div class="group-result-container">
+        `;
+
+        groupResults.forEach(group => {
+            const memberBadges = group.members.map(member => {
+                return `
+                    <span class="group-member-badge">
+                        ${member.name}
+                        <span class="member-rank">第${member.rank}名</span>
+                    </span>
+                `;
+            }).join('');
+
+            html += `
+                <div class="group-result-card">
+                    <div class="group-result-header">
+                        <i class="fas fa-users"></i>
+                        <span class="group-result-name">${group.name}</span>
+                    </div>
+                    <div class="group-members">
+                        ${memberBadges}
+                    </div>
+                </div>
+            `;
+        });
+
+        html += '</div>';
+        DOM.resultDisplay.innerHTML = html;
+    }
+
     function renderHistory() {
         if (history.length === 0) {
             DOM.historyList.innerHTML = `
@@ -694,18 +760,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let html = '';
         history.forEach((record, index) => {
-            const names = record.people.map(p => p.name).join(', ');
+            const isGroupRecord = record.mode === 'group';
+            const label = isGroupRecord ? '组' : '人';
+            let names;
+
+            if (isGroupRecord && record.groups) {
+                names = record.groups.map(g => g.name + '(' + g.members.map(m => m.name).join(', ') + ')').join('; ');
+            } else {
+                names = record.people.map(p => p.name).join(', ');
+            }
+
             html += `
                 <div class="history-item">
                     <div class="history-header">
                         <div class="history-time"><i class="fas fa-clock"></i>${record.time}</div>
-                        <span class="history-count">${record.count}人</span>
+                        <span class="history-count">${record.count}${label}</span>
                     </div>
                     <div class="history-names">${names}</div>
                 </div>
             `;
         });
-        
+
         DOM.historyList.innerHTML = html;
     }
 
@@ -736,23 +811,51 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function startDrawing() {
-        if (selectedStudents.length === 0) {
-            showToast('提示', '请先选择参与抽取的学生');
-            return;
-        }
+        const isGroupMode = drawMode === 'group';
 
-        if (isRolling) return;
-
-        let eligibleStudents = [...selectedStudents];
-        if (onlyTop10) {
-            eligibleStudents = eligibleStudents.filter(s => s.rank <= 10);
-            if (eligibleStudents.length === 0) {
-                showToast('提示', '当前选择的学生中没有前10名学生');
+        if (isGroupMode) {
+            if (groups.length === 0) {
+                showToast('提示', '没有可用的小组数据');
+                return;
+            }
+        } else {
+            if (selectedStudents.length === 0) {
+                showToast('提示', '请先选择参与抽取的学生');
                 return;
             }
         }
 
-        const count = Math.min(Math.max(1, parseInt(DOM.drawCountInput.value) || 1), eligibleStudents.length);
+        if (isRolling) return;
+
+        let eligibleItems;
+
+        if (isGroupMode) {
+            eligibleItems = groups.map(g => ({
+                id: g.id,
+                name: g.name,
+                rank: g.members[0]?.rank || 1,
+                isSpecial: false,
+                isWebDeveloper: false,
+                isCloudShaped: false,
+                isWangHenning: false,
+                isYuanZijie: false,
+                isColorfulWhite: false,
+                hasFnIcon: false,
+                _isGroupProxy: true,
+                _group: g
+            }));
+        } else {
+            eligibleItems = [...selectedStudents];
+            if (onlyTop10) {
+                eligibleItems = eligibleItems.filter(s => s.rank <= 10);
+                if (eligibleItems.length === 0) {
+                    showToast('提示', '当前选择的学生中没有前10名学生');
+                    return;
+                }
+            }
+        }
+
+        const count = Math.min(Math.max(1, parseInt(DOM.drawCountInput.value) || 1), eligibleItems.length);
         DOM.drawCountInput.value = count;
 
         isRolling = true;
@@ -760,7 +863,7 @@ document.addEventListener('DOMContentLoaded', () => {
         DOM.startDrawingBtn.innerHTML = '<i class="fas fa-play"></i>抽取中...';
         DOM.startDrawingBtn.disabled = true;
 
-        const maxHistoryLength = Math.floor(eligibleStudents.length * 0.8);
+        const maxHistoryLength = Math.floor(eligibleItems.length * 0.8);
 
         const animationConfig = {
             totalDuration: 900,
@@ -782,33 +885,38 @@ document.addEventListener('DOMContentLoaded', () => {
         let currentFrame = 0;
         let currentIndex = 0;
         let animationFrameId = null;
-        
-        const misleadTargetIndex = Math.floor(seededRandom(randomSeed) * eligibleStudents.length);
+
+        const misleadTargetIndex = Math.floor(seededRandom(randomSeed) * eligibleItems.length);
         randomSeed++;
 
         function calculateFinalResult() {
-            const recentStudentIds = new Set(recentHistory.map(s => s.id));
-            let availableStudents = eligibleStudents.filter(s => !recentStudentIds.has(s.id));
-            
-            if (availableStudents.length === 0) {
+            const recentIds = new Set(recentHistory.map(s => s.id));
+            let available = eligibleItems.filter(s => !recentIds.has(s.id));
+
+            if (available.length === 0) {
                 recentHistory = [];
-                availableStudents = eligibleStudents;
+                available = eligibleItems;
             }
-            
-            while (availableStudents.length < count) {
-                const earliestStudent = recentHistory.shift();
-                if (earliestStudent) {
-                    availableStudents.push(earliestStudent);
+
+            while (available.length < count) {
+                const earliest = recentHistory.shift();
+                if (earliest) {
+                    available.push(earliest);
                 }
             }
-            
-            return weightedRandomSelection(availableStudents, count);
+
+            if (isGroupMode) {
+                const shuffled = [...available].sort(() => Math.random() - 0.5);
+                return shuffled.slice(0, count);
+            }
+
+            return weightedRandomSelection(available, count);
         }
 
         const finalResult = calculateFinalResult();
         const finalStudent = finalResult[0];
-        const finalIndex = eligibleStudents.findIndex(s => s.id === finalStudent.id);
-        const fakeoutEndIndex = Math.floor((misleadTargetIndex + eligibleStudents.length * animationConfig.fakeoutIntensity) % eligibleStudents.length);
+        const finalIndex = eligibleItems.findIndex(s => s.id === finalStudent.id);
+        const fakeoutEndIndex = Math.floor((misleadTargetIndex + eligibleItems.length * animationConfig.fakeoutIntensity) % eligibleItems.length);
 
         const easeFunctions = {
             easeInQuad: (t) => t * t,
@@ -835,28 +943,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
         function calculateCurrentIndex(frame) {
             let progress, easedProgress;
-            
+
             if (frame <= initialAccelFrames) {
                 progress = frame / initialAccelFrames;
                 easedProgress = easeFunctions.easeInQuad(progress);
-                return Math.floor(easedProgress * eligibleStudents.length * 3) % eligibleStudents.length;
+                return Math.floor(easedProgress * eligibleItems.length * 3) % eligibleItems.length;
             } else if (frame <= initialAccelFrames + misleadDecelFrames) {
                 progress = (frame - initialAccelFrames) / misleadDecelFrames;
                 easedProgress = easeFunctions.easeOutQuad(progress);
-                const startIndex = Math.floor(eligibleStudents.length * 3) % eligibleStudents.length;
+                const startIndex = Math.floor(eligibleItems.length * 3) % eligibleItems.length;
                 const diff = misleadTargetIndex - startIndex;
-                return Math.floor((startIndex + diff * easedProgress) % eligibleStudents.length);
+                return Math.floor((startIndex + diff * easedProgress) % eligibleItems.length);
             } else if (frame <= initialAccelFrames + misleadDecelFrames + fakeoutFrames) {
                 progress = (frame - initialAccelFrames - misleadDecelFrames) / fakeoutFrames;
                 easedProgress = easeFunctions.easeInOutQuad(progress);
-                const fakeoutRange = Math.floor(eligibleStudents.length * animationConfig.fakeoutIntensity);
+                const fakeoutRange = Math.floor(eligibleItems.length * animationConfig.fakeoutIntensity);
                 const fakeoutDirection = seededRandom(randomSeed++) > 0.5 ? 1 : -1;
-                return Math.floor((misleadTargetIndex + fakeoutDirection * fakeoutRange * easedProgress) % eligibleStudents.length);
+                return Math.floor((misleadTargetIndex + fakeoutDirection * fakeoutRange * easedProgress) % eligibleItems.length);
             } else {
                 progress = (frame - initialAccelFrames - misleadDecelFrames - fakeoutFrames) / finalDecelFrames;
                 easedProgress = easeFunctions.easeOutBounce(progress);
                 const diff = finalIndex - fakeoutEndIndex;
-                return Math.floor((fakeoutEndIndex + diff * easedProgress) % eligibleStudents.length);
+                return Math.floor((fakeoutEndIndex + diff * easedProgress) % eligibleItems.length);
             }
         }
 
@@ -877,14 +985,21 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 if (currentFrame < totalFrames) {
                     currentIndex = calculateCurrentIndex(currentFrame);
-                    currentIndex = (currentIndex + eligibleStudents.length) % eligibleStudents.length;
-                    currentResult = [eligibleStudents[currentIndex]];
+                    currentIndex = (currentIndex + eligibleItems.length) % eligibleItems.length;
+                    currentResult = [eligibleItems[currentIndex]];
                     renderResult(currentResult);
                     currentFrame++;
                     animationFrameId = requestAnimationFrame(animateRolling);
                 } else {
                     currentResult = finalResult;
-                    renderResult(currentResult);
+
+                    if (isGroupMode) {
+                        const finalGroups = finalResult.map(p => p._group);
+                        renderGroupResult(finalGroups);
+                    } else {
+                        renderResult(currentResult);
+                    }
+
                     recentHistory.push(...currentResult);
                     if (recentHistory.length > maxHistoryLength) {
                         recentHistory = recentHistory.slice(recentHistory.length - maxHistoryLength);
@@ -895,7 +1010,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     history.unshift({
                         time: timeString,
                         count: count,
-                        people: currentResult
+                        people: isGroupMode ? finalResult.map(p => p._group).flatMap(g => g.members) : currentResult,
+                        groups: isGroupMode ? finalResult.map(p => p._group) : null,
+                        mode: drawMode
                     });
                     if (history.length > 10) {
                         history.pop();
@@ -910,7 +1027,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     renderHistory();
                     updateStatistics();
-                    showToast('成功', `已抽取${count}名学生`);
+                    showToast('成功', isGroupMode ? `已抽取${count}个小组` : `已抽取${count}名学生`);
                 }
             } catch (error) {
                 console.error('抽取动画发生错误:', error);
@@ -1031,7 +1148,22 @@ document.addEventListener('DOMContentLoaded', () => {
         DOM.startDrawingBtn.addEventListener('click', startDrawing);
         DOM.onlyTop10.addEventListener('change', (e) => {
             onlyTop10 = e.target.checked;
+
         });
+
+        if (DOM.drawModeToggle) {
+            DOM.drawModeToggle.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    if (isRolling) return;
+                    DOM.drawModeToggle.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    drawMode = btn.dataset.mode;
+                    renderResult([]);
+                    showToast('提示', drawMode === 'group' ? '已切换到小组抽取模式' : '已切换到个人抽取模式');
+                });
+            });
+        }
+
         DOM.musicBtn.addEventListener('click', toggleMusic);
         
         DOM.modalOverlay.addEventListener('click', (e) => {
