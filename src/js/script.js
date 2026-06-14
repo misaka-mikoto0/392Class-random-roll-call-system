@@ -366,6 +366,7 @@ document.addEventListener('DOMContentLoaded', () => {
         isWangHenning: name === '王鹤凝',
         isYuanZijie: name === '原梓杰',
         hasFnIcon: name === '成浩宇',
+        hasYzyIcon: name === '延泽玉',
         isColorfulWhite: name === '李湣帅'
     }));
 
@@ -565,6 +566,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (student.hasFnIcon) {
                 avatarIcon = `<img src="src/assets/fn.webp" class="fn-mini-icon" alt="fn" width="24" height="24">`;
             }
+            if (student.hasYzyIcon) {
+                avatarIcon = `<img src="src/assets/yzy.png" class="yzy-mini-icon" alt="yzy">`;
+            }
             
             let nameBadge = '';
             if (student.isWebDeveloper) {
@@ -684,6 +688,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (student.hasFnIcon) {
                 innerHtml += '<img src="src/assets/fn.webp" class="fn-icon" alt="fn" width="42" height="42">';
             }
+            if (student.hasYzyIcon) {
+                innerHtml += '<img src="src/assets/yzy.png" class="yzy-icon" alt="yzy">';
+            }
             innerHtml += '</span>';
             
             if (student.isWangHenning) {
@@ -739,6 +746,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 let nameContent = member.name;
                 if (member.hasFnIcon) {
                     nameContent += '<img src="src/assets/fn.webp" class="fn-mini-icon" alt="fn" width="20" height="20">';
+                }
+                if (member.hasYzyIcon) {
+                    nameContent += '<img src="src/assets/yzy.png" class="yzy-mini-icon" alt="yzy">';
                 }
 
                 let badge = '';
