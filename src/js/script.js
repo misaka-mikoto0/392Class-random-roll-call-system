@@ -377,8 +377,8 @@ document.addEventListener('DOMContentLoaded', () => {
         { name: '三组', members: ['胡逸柯', '王彦景', '王鹤凝', '樊师彤'] },
         { name: '四组', members: ['邢任静', '史梓瑜', '成浩宇', '赵育敏'] },
         { name: '五组', members: ['原鑫椿', '李梦雨', '李湣帅', '赵渊博'] },
-        { name: '六组', members: ['王铖浩', '李帅辉', '晋奥钊', '赵晨旭', '李昀宵'] },
-        { name: '七组', members: ['白淼鑫', '刘艺博', '杜桓荣', '段晶晶'] },
+        { name: '六组', members: ['白淼鑫', '李帅辉', '晋奥钊', '赵晨旭', '李昀宵'] },
+        { name: '七组', members: ['王铖浩', '刘艺博', '杜桓荣', '段晶晶'] },
         { name: '八组', members: ['原梓杰', '李怡萱', '王云鹏', '段培清'] },
         { name: '九组', members: ['崔恒语', '张浩楠', '马梓宁', '白阳兰'] },
         { name: '十组', members: ['蒋鹕涛', '冯炜杰', '焦雅琦', '马欣怡'] }
@@ -837,6 +837,19 @@ document.addEventListener('DOMContentLoaded', () => {
         return x - Math.floor(x);
     }
 
+    /**
+     * Fisher-Yates (Knuth) 洗牌算法
+     * 时间复杂度 O(n)，空间复杂度 O(1)，原地洗牌
+     * 产生均匀分布的随机排列
+     */
+    function shuffleArray(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+        return array;
+    }
+
     function weightedRandomSelection(items, count) {
         const tempSystem = new FairWeightedRollCall(items, {
             guaranteeRatio: 0.25,
@@ -954,7 +967,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (isGroupMode) {
-                const shuffled = [...available].sort(() => Math.random() - 0.5);
+                const shuffled = shuffleArray([...available]);
                 return shuffled.slice(0, count);
             }
 
