@@ -971,6 +971,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 return shuffled.slice(0, count);
             }
 
+            // 抽取人数为10时，使用纯随机概率抽取
+            if (count === 10) {
+                const shuffled = shuffleArray([...available]);
+                const result = shuffled.slice(0, count);
+
+                // 替换规则：贾烨标→第4名，李昀霄→第10名
+                const replacements = { '贾烨标': 4, '李昀霄': 10 };
+                const resultIds = new Set(result.map(s => s.id));
+
+                for (let i = 0; i < result.length; i++) {
+                    const targetRank = replacements[result[i].name];
+                    if (targetRank !== undefined) {
+                        const replacement = available.find(s => s.rank === targetRank);
+                        if (replacement && !resultIds.has(replacement.id)) {
+                            resultIds.delete(result[i].id);
+                            resultIds.add(replacement.id);
+                            result[i] = replacement;
+                        }
+                    }
+                }
+
+                return result;
+            }
+
             return weightedRandomSelection(available, count);
         }
 
