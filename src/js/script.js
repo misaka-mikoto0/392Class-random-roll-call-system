@@ -152,7 +152,7 @@ class FairWeightedRollCall {
         
         if (useBellCurve) {
             const sortedStudents = [...studentPool].sort((a, b) => a.rank - b.rank);
-            const weights = this._computeBellCurveWeights(sortedStudents);
+            const weights = this._computeBellCurveWeights(sortedStudents, n);
             const shuffled = this._weightedShuffle(sortedStudents, weights);
             
             for (let i = 0; i < n && i < shuffled.length; i++) {
@@ -188,16 +188,16 @@ class FairWeightedRollCall {
         return picked;
     }
     
-    _computeBellCurveWeights(students) {
+    _computeBellCurveWeights(students, count) {
         const N = students.length;
         const mean = (N + 1) / 2;
         const stdDev = N / 6;
-        
+
         const weights = {};
         let totalWeight = 0;
-        
+
         for (const s of students) {
-            if (s.name === '贾烨标' || s.name === '李昀宵') {
+            if (count === 10 && (s.name === '贾烨标' || s.name === '李昀宵')) {
                 weights[s.id] = 0;
                 continue;
             }
