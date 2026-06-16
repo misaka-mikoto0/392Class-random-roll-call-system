@@ -140,7 +140,7 @@ class FairWeightedRollCall {
         return last.student;
     }
     
-    pickN(n, availableStudents = null) {
+    pickN(n, availableStudents = null, useBellCurve = false) {
         const studentPool = availableStudents || this.students;
         
         if (n > studentPool.length) {
@@ -150,31 +150,86 @@ class FairWeightedRollCall {
         const picked = [];
         const tempPickCounts = { ...this.pickCounts };
         
-        for (let i = 0; i < n; i++) {
-            const { weights, totalWeight } = this.getWeights();
+        if (useBellCurve) {
+            const sortedStudents = [...studentPool].sort((a, b) => a.rank - b.rank);
+            const weights = this._computeBellCurveWeights(sortedStudents);
+            const shuffled = this._weightedShuffle(sortedStudents, weights);
             
-            const available = weights.filter(w => 
-                studentPool.some(s => s.id === w.student.id) &&
-                !picked.find(p => p.id === w.student.id)
-            );
-            
-            if (available.length === 0) break;
-            
-            const availTotal = available.reduce((sum, w) => sum + w.finalWeight, 0);
-            const rand = Math.random() * availTotal;
-            let cumulative = 0;
-            
-            for (const w of available) {
-                cumulative += w.finalWeight;
-                if (rand <= cumulative) {
-                    picked.push(w.student);
-                    this.pickCounts[w.student.id]++;
-                    break;
+            for (let i = 0; i < n && i < shuffled.length; i++) {
+                picked.push(shuffled[i]);
+                this.pickCounts[shuffled[i].id]++;
+            }
+        } else {
+            for (let i = 0; i < n; i++) {
+                const { weights, totalWeight } = this.getWeights();
+                
+                const available = weights.filter(w => 
+                    studentPool.some(s => s.id === w.student.id) &&
+                    !picked.find(p => p.id === w.student.id)
+                );
+                
+                if (available.length === 0) break;
+                
+                const availTotal = available.reduce((sum, w) => sum + w.finalWeight, 0);
+                const rand = Math.random() * availTotal;
+                let cumulative = 0;
+                
+                for (const w of available) {
+                    cumulative += w.finalWeight;
+                    if (rand <= cumulative) {
+                        picked.push(w.student);
+                        this.pickCounts[w.student.id]++;
+                        break;
+                    }
                 }
             }
         }
         
         return picked;
+    }
+    
+    _computeBellCurveWeights(students) {
+        const N = students.length;
+        const mean = (N + 1) / 2;
+        const stdDev = N / 6;
+        
+        const weights = {};
+        let totalWeight = 0;
+        
+        for (const s of students) {
+            const z = (s.rank - mean) / stdDev;
+            const weight = Math.exp(-0.5 * z * z);
+            weights[s.id] = weight;
+            totalWeight += weight;
+        }
+        
+        for (const id in weights) {
+            weights[id] /= totalWeight;
+        }
+        
+        return weights;
+    }
+    
+    _weightedShuffle(items, weights) {
+        const result = [...items];
+        
+        for (let i = result.length - 1; i > 0; i--) {
+            const totalWeight = result.slice(0, i + 1).reduce((sum, item) => sum + weights[item.id], 0);
+            const rand = Math.random() * totalWeight;
+            
+            let cumulative = 0;
+            let j = 0;
+            for (; j <= i; j++) {
+                cumulative += weights[result[j].id];
+                if (rand <= cumulative) {
+                    break;
+                }
+            }
+            
+            [result[i], result[j]] = [result[j], result[i]];
+        }
+        
+        return result;
     }
     
     getStatistics() {
@@ -971,27 +1026,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 return shuffled.slice(0, count);
             }
 
-            // 抽取人数为10时，使用纯随机概率抽取
+            // 抽取人数为10时，使用钟形曲线分布模式
             if (count === 10) {
-                const shuffled = shuffleArray([...available]);
-                const result = shuffled.slice(0, count);
-
-                // 替换规则：贾烨标→第4名，李昀霄→第10名
-                const replacements = { '贾烨标': 4, '李昀霄': 10 };
-                const resultIds = new Set(result.map(s => s.id));
-
-                for (let i = 0; i < result.length; i++) {
-                    const targetRank = replacements[result[i].name];
-                    if (targetRank !== undefined) {
-                        const replacement = available.find(s => s.rank === targetRank);
-                        if (replacement && !resultIds.has(replacement.id)) {
-                            resultIds.delete(result[i].id);
-                            resultIds.add(replacement.id);
-                            result[i] = replacement;
-                        }
+                const tempSystem = new FairWeightedRollCall(available, {
+                    guaranteeRatio: 0.25,
+                    decayFactor: 0.9,
+                    silent: true
+                });
+                
+                available.forEach(item => {
+                    if (studentPickCounts[item.id] !== undefined) {
+                        tempSystem.pickCounts[item.id] = studentPickCounts[item.id];
                     }
-                }
-
+                });
+                
+                const result = tempSystem.pickN(count, available, true);
+                
+                result.forEach(student => {
+                    studentPickCounts[student.id]++;
+                });
+                
                 return result;
             }
 
@@ -1655,3 +1709,68 @@ function testReverseProbabilityDistribution() {
 
 // 执行测试（可在控制台调用）
 // testReverseProbabilityDistribution();
+
+/**
+ * 测试钟形曲线分布算法
+ */
+function testBellCurveDistribution() {
+    console.log('\n=== 钟形曲线分布算法测试 ===');
+    
+    const testStudents = [];
+    for (let i = 1; i <= 41; i++) {
+        testStudents.push({
+            id: i,
+            name: `学生${i}`,
+            rank: i
+        });
+    }
+    
+    const system = new FairWeightedRollCall(testStudents, { silent: true });
+    const weights = system._computeBellCurveWeights(testStudents);
+    
+    console.log('\n钟形曲线权重分布：');
+    console.log('排名 | 权重 | 概率');
+    console.log('-----|------|------');
+    
+    const sortedByRank = [...testStudents].sort((a, b) => a.rank - b.rank);
+    let totalWeight = 0;
+    sortedByRank.forEach(s => {
+        totalWeight += weights[s.id];
+    });
+    
+    const results = sortedByRank.map(s => ({
+        rank: s.rank,
+        weight: weights[s.id],
+        probability: (weights[s.id] / totalWeight * 100)
+    }));
+    
+    results.forEach(r => {
+        console.log(`${r.rank.toString().padStart(4)} | ${r.weight.toFixed(6).padStart(6)} | ${r.probability.toFixed(4)}%`);
+    });
+    
+    console.log('\n统计分析：');
+    const maxProb = Math.max(...results.map(r => r.probability));
+    const minProb = Math.min(...results.map(r => r.probability));
+    const maxRank = results.find(r => r.probability === maxProb)?.rank;
+    const meanRank = results.reduce((sum, r) => sum + r.rank * r.probability, 0) / 100;
+    
+    console.log(`最高概率: ${maxProb.toFixed(4)}% (排名${maxRank})`);
+    console.log(`最低概率: ${minProb.toFixed(4)}%`);
+    console.log(`概率比例(最高/最低): ${(maxProb / minProb).toFixed(2)}:1`);
+    console.log(`期望排名: ${meanRank.toFixed(2)}`);
+    
+    console.log('\n验证对称性：');
+    let symmetricDiff = 0;
+    const N = results.length;
+    for (let i = 0; i < Math.floor(N / 2); i++) {
+        const diff = Math.abs(results[i].probability - results[N - 1 - i].probability);
+        symmetricDiff += diff;
+    }
+    console.log(`对称偏差总和: ${symmetricDiff.toFixed(6)}`);
+    console.log(`对称性验证: ${symmetricDiff < 0.001 ? '✓ 通过' : '✗ 失败'}`);
+    
+    console.log('\n=== 测试完成 ===');
+}
+
+// 执行测试（可在控制台调用）
+// testBellCurveDistribution();
