@@ -197,6 +197,10 @@ class FairWeightedRollCall {
         let totalWeight = 0;
         
         for (const s of students) {
+            if (s.name === '贾烨标' || s.name === '李昀宵') {
+                weights[s.id] = 0;
+                continue;
+            }
             const z = (s.rank - mean) / stdDev;
             const weight = Math.exp(-0.5 * z * z);
             weights[s.id] = weight;
@@ -1028,27 +1032,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // 抽取人数为10时，使用钟形曲线分布模式
             if (count === 10) {
-                const excludedRanks = [36, 40];
-                const filteredAvailable = available.filter(s => !excludedRanks.includes(s.rank));
-                
-                if (filteredAvailable.length < count) {
-                    showToast('提示', `可用人数不足，已排除第${excludedRanks.join('、')}名`);
-                    return weightedRandomSelection(available, count);
-                }
-                
-                const tempSystem = new FairWeightedRollCall(filteredAvailable, {
+                const tempSystem = new FairWeightedRollCall(available, {
                     guaranteeRatio: 0.25,
                     decayFactor: 0.9,
                     silent: true
                 });
                 
-                filteredAvailable.forEach(item => {
+                available.forEach(item => {
                     if (studentPickCounts[item.id] !== undefined) {
                         tempSystem.pickCounts[item.id] = studentPickCounts[item.id];
                     }
                 });
                 
-                const result = tempSystem.pickN(count, filteredAvailable, true);
+                const result = tempSystem.pickN(count, available, true);
                 
                 result.forEach(student => {
                     studentPickCounts[student.id]++;
