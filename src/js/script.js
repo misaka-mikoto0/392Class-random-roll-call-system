@@ -152,12 +152,15 @@ class FairWeightedRollCall {
         
         if (useBellCurve) {
             const sortedStudents = [...studentPool].sort((a, b) => a.rank - b.rank);
-            const weights = this._computeBellCurveWeights(sortedStudents, n);
+            const weights = this._computeBellCurveWeights(sortedStudents);
             const shuffled = this._weightedShuffle(sortedStudents, weights);
-            
-            for (let i = 0; i < n && i < shuffled.length; i++) {
-                picked.push(shuffled[i]);
-                this.pickCounts[shuffled[i].id]++;
+
+            // 过滤掉被排除的学生（权重为0），确保贾烨标和李昀宵不会被抽中
+            const filtered = shuffled.filter(s => weights[s.id] > 0);
+
+            for (let i = 0; i < n && i < filtered.length; i++) {
+                picked.push(filtered[i]);
+                this.pickCounts[filtered[i].id]++;
             }
         } else {
             for (let i = 0; i < n; i++) {
@@ -188,16 +191,16 @@ class FairWeightedRollCall {
         return picked;
     }
     
-    _computeBellCurveWeights(students, count) {
+    _computeBellCurveWeights(students) {
         const N = students.length;
         const mean = (N + 1) / 2;
         const stdDev = N / 6;
-
+        
         const weights = {};
         let totalWeight = 0;
-
+        
         for (const s of students) {
-            if (count === 10 && (s.name === '贾烨标' || s.name === '李昀宵')) {
+            if (s.name === '贾烨标' || s.name === '李昀宵') {
                 weights[s.id] = 0;
                 continue;
             }
