@@ -2781,3 +2781,161 @@ body {
     border-radius: var(--tx-radius-2xl);
 }
 
+/* ============================
+   课表显示组件样式
+   ============================ */
+.schedule-card .schedule-content {
+    padding: var(--tx-spacing-md);
+}
+
+.schedule-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--tx-spacing-sm);
+    color: var(--tx-text-secondary);
+    font-size: var(--tx-font-size-sm);
+    padding: var(--tx-spacing-lg) 0;
+}
+
+.schedule-loading i {
+    color: var(--tx-primary);
+}
+
+/* 上课中状态 */
+.schedule-active {
+    text-align: center;
+    padding: var(--tx-spacing-md) 0;
+}
+
+.schedule-active .schedule-course-name {
+    font-size: var(--tx-font-size-2xl);
+    font-weight: 700;
+    color: var(--tx-primary);
+    margin-bottom: var(--tx-spacing-sm);
+    line-height: 1.3;
+}
+
+.schedule-active .schedule-period {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--tx-spacing-sm);
+    margin-bottom: var(--tx-spacing-sm);
+}
+
+.schedule-active .schedule-period-name {
+    font-size: var(--tx-font-size-sm);
+    font-weight: 600;
+    color: var(--tx-text-primary);
+    background: var(--tx-primary-light);
+    padding: 2px 10px;
+    border-radius: var(--tx-radius-full);
+}
+
+.schedule-active .schedule-period-time {
+    font-size: var(--tx-font-size-xs);
+    color: var(--tx-text-tertiary);
+}
+
+.schedule-active .schedule-countdown {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--tx-spacing-xs);
+    font-size: var(--tx-font-size-sm);
+    color: var(--tx-warning);
+    margin-bottom: var(--tx-spacing-sm);
+}
+
+.schedule-active .schedule-countdown i {
+    animation: hourglassPulse 2s ease-in-out infinite;
+}
+
+@keyframes hourglassPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+/* 课间休息状态 */
+.schedule-break {
+    text-align: center;
+    padding: var(--tx-spacing-md) 0;
+}
+
+.schedule-break .schedule-status-icon {
+    font-size: var(--tx-font-size-3xl);
+    color: var(--tx-secondary);
+    margin-bottom: var(--tx-spacing-sm);
+}
+
+.schedule-break .schedule-status-text {
+    font-size: var(--tx-font-size-base);
+    color: var(--tx-text-primary);
+    font-weight: 500;
+    margin-bottom: var(--tx-spacing-xs);
+}
+
+.schedule-break .schedule-next {
+    margin-top: var(--tx-spacing-sm);
+    padding: var(--tx-spacing-sm);
+    background: var(--tx-bg-secondary);
+    border-radius: var(--tx-radius-lg);
+    font-size: var(--tx-font-size-sm);
+}
+
+.schedule-break .schedule-next-label {
+    color: var(--tx-text-secondary);
+}
+
+.schedule-break .schedule-next-name {
+    font-weight: 600;
+    color: var(--tx-text-primary);
+    margin: 0 4px;
+}
+
+.schedule-break .schedule-next-time {
+    color: var(--tx-text-tertiary);
+}
+
+/* 休息日状态 */
+.schedule-rest {
+    text-align: center;
+    padding: var(--tx-spacing-md) 0;
+}
+
+.schedule-rest .schedule-status-icon {
+    font-size: var(--tx-font-size-3xl);
+    color: var(--tx-success);
+    margin-bottom: var(--tx-spacing-sm);
+}
+
+.schedule-rest .schedule-status-text {
+    font-size: var(--tx-font-size-base);
+    color: var(--tx-text-primary);
+    font-weight: 500;
+    margin-bottom: var(--tx-spacing-xs);
+}
+
+/* 错误状态 */
+.schedule-error {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--tx-spacing-sm);
+    padding: var(--tx-spacing-lg) 0;
+    color: var(--tx-error);
+    font-size: var(--tx-font-size-sm);
+}
+
+.schedule-error i {
+    font-size: var(--tx-font-size-lg);
+}
+
+/* 通用元信息 */
+.schedule-meta {
+    font-size: var(--tx-font-size-xs);
+    color: var(--tx-text-tertiary);
+    text-align: center;
+}
+
