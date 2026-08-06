@@ -214,6 +214,14 @@ body {
     align-items: flex-start;
 }
 
+/* 左列：纵向排列 main-content 与 history-section，使两者紧贴，不受 sidebar 高度影响 */
+.left-column {
+    display: flex;
+    flex-direction: column;
+    gap: var(--tx-spacing-xl);
+    grid-column: 1;
+}
+
 .main-content {
     background: var(--tx-bg-primary);
     border-radius: var(--tx-radius-xl);
@@ -511,6 +519,25 @@ body {
     box-shadow: 
         0 15px 50px rgba(7, 193, 96, 0.6),
         0 0 80px rgba(7, 193, 96, 0.4);
+}
+
+/* 神秘徽章（未排名学生）- 克制的紫灰主题 */
+.result-badge.mystery {
+    background: linear-gradient(135deg, #6B7280 0%, #4B5563 100%);
+    box-shadow:
+        0 10px 40px rgba(107, 114, 128, 0.45),
+        0 0 60px rgba(139, 92, 203, 0.2);
+    border: 4px dashed rgba(255, 255, 255, 0.45);
+}
+
+.result-badge.mystery:hover {
+    box-shadow:
+        0 15px 50px rgba(107, 114, 128, 0.55),
+        0 0 80px rgba(139, 92, 203, 0.3);
+}
+
+.result-badge.mystery .badge-rank {
+    background: linear-gradient(135deg, #8B5CCB 0%, #6B7280 100%);
 }
 
 /* 云朵形状徽章（原鑫椿�?- 自然融合效果 */
@@ -1262,6 +1289,21 @@ body {
         0 0 50px rgba(7, 193, 96, 0.3);
 }
 
+/* 未排名学生 - 神秘紫灰主题 */
+.group-member-card.mystery {
+    background: linear-gradient(135deg, #6B7280 0%, #4B5563 100%);
+    box-shadow:
+        0 6px 20px rgba(107, 114, 128, 0.4),
+        0 0 30px rgba(139, 92, 203, 0.2);
+    border: 3px dashed rgba(255, 255, 255, 0.45);
+}
+
+.group-member-card.mystery:hover {
+    box-shadow:
+        0 10px 30px rgba(107, 114, 128, 0.5),
+        0 0 50px rgba(139, 92, 203, 0.3);
+}
+
 /* 李梦雨 - Web Developer */
 .group-member-card.web-developer-result {
     background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
@@ -1511,6 +1553,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: var(--tx-spacing-lg);
+    grid-column: 2;
 }
 
 .sidebar-card {
@@ -1655,16 +1698,34 @@ body {
 
 /* 历史记录 */
 .history-card-container {
+    /* 已弃用：抽取记录卡片已移到 content-wrapper 下方的 .history-section，保留以防旧引用 */
     margin-top: var(--tx-spacing-xl);
 }
 
-.history-list {
-    max-height: 300px;
-    overflow-y: auto;
-    padding-right: var(--tx-spacing-sm);
-    display: flex;
-    flex-direction: column;
+/* 抽取记录区域：位于 .left-column 内，紧贴 main-content 下方，间距由 left-column 的 gap 控制 */
+.history-section {
+    /* 间距统一由 .left-column 的 flex gap 控制，避免与 sidebar 高度联动产生空隙 */
+}
+
+.history-section .sidebar-card.history-card {
+    margin: 0;
+}
+
+.history-section .history-list {
+    max-height: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: var(--tx-spacing-md);
+    padding-right: 0;
+    overflow: visible;
+}
+
+.history-section .history-list .empty-state {
+    grid-column: 1 / -1;
+}
+
+.history-section .history-item:hover {
+    transform: translateY(-2px);
 }
 
 .history-list::-webkit-scrollbar {
@@ -1910,6 +1971,38 @@ body {
     border-color: var(--tx-primary);
     background: var(--tx-primary-light);
     box-shadow: 0 0 0 3px rgba(7, 193, 96, 0.1);
+}
+
+/* 未排名学生卡片（选择弹窗）- 虚线边框 + 淡紫底 */
+.student-card.unranked-card {
+    background: linear-gradient(135deg, rgba(139, 92, 203, 0.06) 0%, rgba(107, 114, 128, 0.06) 100%);
+    border: 2px dashed rgba(139, 92, 203, 0.45);
+}
+
+.student-card.unranked-card:hover {
+    border-color: #8B5CCB;
+    background: linear-gradient(135deg, rgba(139, 92, 203, 0.12) 0%, rgba(107, 114, 128, 0.10) 100%);
+}
+
+.student-card.unranked-card .student-rank {
+    color: #7C5CCB;
+    font-weight: 700;
+    background: rgba(139, 92, 203, 0.12);
+}
+
+/* 神秘问号徽章（弹窗内） */
+.mystery-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    margin-left: 8px;
+    background: linear-gradient(135deg, #8B5CCB 0%, #6B7280 100%);
+    color: #fff;
+    border-radius: 50%;
+    font-size: 11px;
+    box-shadow: 0 2px 6px rgba(139, 92, 203, 0.4);
 }
 
 /* 李梦雨的五彩斑斓的黑卡片样式 */
@@ -2330,12 +2423,12 @@ body {
         gap: var(--tx-spacing-lg);
     }
     
+    .left-column {
+        order: 1;
+    }
+
     .sidebar {
         order: 2;
-    }
-    
-    .main-content {
-        order: 1;
     }
     
     .result-display {
@@ -2373,6 +2466,15 @@ body {
     
     .main-content {
         padding: var(--tx-spacing-lg);
+    }
+
+    /* 小屏下 left-column 收窄间距，history 网格改为 1 列 */
+    .left-column {
+        gap: var(--tx-spacing-lg);
+    }
+
+    .history-section .history-list {
+        grid-template-columns: 1fr;
     }
     
     .result-display {
@@ -2938,4 +3040,3 @@ body {
     color: var(--tx-text-tertiary);
     text-align: center;
 }
-

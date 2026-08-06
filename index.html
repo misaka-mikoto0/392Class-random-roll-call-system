@@ -25,6 +25,7 @@
             </div>
             
             <div class="content-wrapper">
+                <div class="left-column">
                 <div class="main-content">
                     <div class="result-display" id="result-display">
                         <div class="placeholder-text">
@@ -65,21 +66,22 @@
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    <div class="history-card-container">
-                        <div class="sidebar-card">
-                            <div class="card-title">
-                                <i class="fas fa-history"></i>
-                                <span>抽取记录</span>
-                            </div>
-                            <div class="history-list" id="history-list">
-                                <div class="empty-state">
-                                    <i class="fas fa-clock"></i>
-                                    <p>暂无抽取记录</p>
-                                </div>
+                <div class="history-section">
+                    <div class="sidebar-card history-card">
+                        <div class="card-title">
+                            <i class="fas fa-history"></i>
+                            <span>抽取记录</span>
+                        </div>
+                        <div class="history-list" id="history-list">
+                            <div class="empty-state">
+                                <i class="fas fa-clock"></i>
+                                <p>暂无抽取记录</p>
                             </div>
                         </div>
                     </div>
+                </div>
                 </div>
 
                 <div class="sidebar">
@@ -231,7 +233,8 @@
     </div>
 
     <script src="src/js/background.js"></script>
-    <script src="src/js/script.js"></script>
+    <script src="src/js/confetti.js?v=2"></script>
+    <script src="src/js/script.js?v=2"></script>
     <script src="src/js/schedule.js"></script>
 </body>
 </html>

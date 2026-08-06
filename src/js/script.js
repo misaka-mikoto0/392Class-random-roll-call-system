@@ -1,16 +1,22 @@
 /**
- * 公平加权随机点名系统 v2.2
+ * 公平加权随机点名系统 v2.3
  * 算法说明：
  * 1. 基础权重：rank^0.15 - 名次越靠后权重越高，差距控制在1.5倍左右
  * 2. 保底权重：占总权重40%，确保每个人都有较高的最低抽取概率
  * 3. 衰减机制：每次抽中后权重×0.9，防止重复抽取同一人
- * 4. 轮盘赌算法：基于最终权重进行加权随机选择
+ * 4. 覆盖率系数：已被抽中的人×0.7，未被抽中的人×1.5（全员覆盖后重置
+ * 5. 轮盘赌算法：基于最终权重进行加权随机选择
  */
 class FairWeightedRollCall {
     constructor(students, options = {}) {
         this.students = students;
         this.guaranteeRatio = options.guaranteeRatio ?? 0.40;
         this.decayFactor = options.decayFactor ?? 0.9;
+
+        // 覆盖率系数（基于「已抽中 → 降低权重；未抽中 → 提高权重
+        this.coverageLowMult = options.coverageLowMult ?? 0.7;   // 已在抽取记录中
+        this.coverageHighMult = options.coverageHighMult ?? 1.5; // 不在抽取记录中
+        this.coveredIds = options.coveredIds ?? null;           // Set<number> 或 null
 
         this.resetPeriod = options.resetPeriod ?? 'per_class';
         this.silent = options.silent ?? false;
@@ -41,6 +47,10 @@ class FairWeightedRollCall {
         const lastStudent = sortedStudents[sortedStudents.length - 1];
         const firstWeight = firstStudent ? this.baseWeights[firstStudent.id] : 0;
         const lastWeight = lastStudent ? this.baseWeights[lastStudent.id] : 0;
+
+        const hasCoverage = this.coveredIds && this.coveredIds.size > 0;
+        const coveredCnt = hasCoverage ? [...this.students].filter(s => this.coveredIds.has(s.id)).length : 0;
+        const uncoveredCnt = this.students.length - coveredCnt;
         
         if (!this.silent) {
             console.log('=== 基础权重预计算结果 ===');
@@ -49,6 +59,9 @@ class FairWeightedRollCall {
             if (firstStudent) console.log(`第${firstStudent.rank}名(${firstStudent.name})基础权重: ${firstWeight.toFixed(4)}`);
             if (lastStudent) console.log(`第${lastStudent.rank}名(${lastStudent.name})基础权重: ${lastWeight.toFixed(4)}`);
             if (firstWeight && lastWeight) console.log(`权重比例: ${(firstWeight / lastWeight).toFixed(2)}:1`);
+            if (hasCoverage) {
+                console.log(`覆盖率生效：已覆盖${coveredCnt}人 (系数x${this.coverageLowMult}) 未覆盖${uncoveredCnt}人 (系数x${this.coverageHighMult})`);
+            }
         }
     }
     
@@ -59,7 +72,16 @@ class FairWeightedRollCall {
         const guaranteeWeight = this.avgBaseWeight * this.guaranteeRatio;
         const rankWeight = baseWeight * (1 - this.guaranteeRatio);
         const mixedWeight = guaranteeWeight + rankWeight;
-        const finalWeight = mixedWeight * Math.pow(this.decayFactor, pickCount);
+        let finalWeight = mixedWeight * Math.pow(this.decayFactor, pickCount);
+
+        // 覆盖率系数调整
+        let coverageMult = 1;
+        if (this.coveredIds && this.coveredIds.has(student.id)) {
+            coverageMult = this.coverageLowMult;
+        } else if (this.coveredIds && this.coveredIds.size > 0) {
+            coverageMult = this.coverageHighMult;
+        }
+        finalWeight *= coverageMult;
         
         return {
             baseWeight,
@@ -67,6 +89,7 @@ class FairWeightedRollCall {
             rankWeight,
             mixedWeight,
             decayFactor: Math.pow(this.decayFactor, pickCount),
+            coverageMult,
             finalWeight
         };
     }
@@ -346,7 +369,342 @@ window.testRollCallSimulation = function(simulationCount = 100000) {
     return results;
 };
 
-document.addEventListener('DOMContentLoaded', () => {
+// ============================================================
+// 成绩排名数据加载（grades.csv）
+// 文件名称后面的第一个数字即为排名（总分排名）；
+// 排名为 0 或非有效数字的条目视为「无排名」，随机插入现有排名前后。
+// ============================================================
+
+// file:// 协议下 fetch 会失败，内嵌兜底数据保证离线可用
+const GRADES_CSV_FALLBACK = `姓名,总分排名,语文排名,数学排名,英语排名,物理排名,化学排名,生物排名
+胡逸柯,1,5,15,2,7,16,3
+崔恒语,2,2,32,1,9,4,15
+原梓杰,3,15,9,19,3,1,1
+原鑫椿,4,4,17,9,19,3,8
+王铖浩,5,16,3,11,15,5,8
+李梦雨,6,8,6,3,20,24,20
+邢任静,7,1,9,7,22,16,29
+李志敏,8,23,2,31,12,6,8
+李怡萱,9,12,11,10,12,14,18
+马欣怡,10,8,11,5,37,18,3
+冯炜杰,11,6,7,37,15,2,11
+原章恬,11,8,1,7,32,31,24
+刘艺博,13,16,18,35,2,8,5
+张浩楠,14,8,26,36,1,12,5
+杜桓荣,15,31,30,6,10,8,18
+茹柯臻,16,23,11,25,17,8,17
+白淼鑫,17,37,15,30,11,7,13
+史梓瑜,18,16,4,17,5,25,37
+成浩宇,19,23,5,27,17,19,21
+李湣帅,20,23,35,27,4,12,1
+段晶晶,21,3,27,12,35,21,23
+王鹤凝,22,28,25,14,22,11,30
+王彦景,23,38,21,23,8,14,22
+蒋鹕涛,24,23,8,27,12,21,26
+张祺曼,25,12,23,21,20,20,25
+李帅辉,26,20,23,19,26,29,5
+张艺瀚,27,20,11,15,33,27,30
+段培清,28,34,20,12,22,29,27
+马梓宁,29,6,33,4,38,33,27
+焦雅琦,30,31,21,26,31,23,13
+王云鹏,31,16,37,31,6,25,12
+白阳兰,32,31,29,15,22,27,35
+晋奥钊,32,28,34,17,27,34,15
+贾烨标,34,12,27,23,29,38,30
+赵晨旭,35,22,19,33,29,31,33
+赵育敏,36,36,35,21,34,37,35
+延泽玉,37,34,31,34,36,36,33
+李昀宵,38,28,38,38,28,35,38
+元静怡,0,0,0,0,0,0,0
+赵渊博,0,0,0,0,0,0,0
+樊师彤,0,0,0,0,0,0,0`;
+
+/**
+ * 解析 grades.csv：返回 Map<姓名, rankNumber>
+ * 取姓名后第一个有效数字作为排名（即总分排名列）。
+ */
+function parseGradesCSV(text) {
+    const lines = text.trim().split(/\r?\n/);
+    const map = new Map();
+    for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        const cols = line.split(',');
+        const name = cols[0] && cols[0].trim();
+        if (!name) continue;
+        let rank = NaN;
+        for (let j = 1; j < cols.length; j++) {
+            const v = parseInt(cols[j].trim(), 10);
+            if (!isNaN(v)) { rank = v; break; }
+        }
+        map.set(name, rank);
+    }
+    return map;
+}
+
+/**
+ * 加载成绩排名数据（fetch 失败时回退到内嵌数据）
+ */
+async function loadGradesData() {
+    try {
+        const response = await fetch('src/assets/grades.csv');
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        const text = await response.text();
+        console.log('[grades] 已从 grades.csv 加载排名数据');
+        return parseGradesCSV(text);
+    } catch (err) {
+        console.warn('[grades] fetch 失败，使用内嵌兜底数据:', err.message);
+        return parseGradesCSV(GRADES_CSV_FALLBACK);
+    }
+}
+
+/**
+ * 随机生成合成排名：在现有排名的某个位置之前或之后插入（半步法）。
+ * 保证位置唯一且可融入 Math.pow(rank, 0.15) 权重计算。
+ */
+function synthesizeRandomRank(uniqueRanks) {
+    if (uniqueRanks.length === 0) return Math.random() + 0.5;
+    const i = Math.floor(Math.random() * uniqueRanks.length);
+    const before = Math.random() < 0.5;
+    const R = uniqueRanks[i];
+    if (before) {
+        if (i === 0) return R - 0.5;             // 排在第1名之前
+        return (uniqueRanks[i - 1] + R) / 2;     // 插入到 R 之前
+    } else {
+        if (i === uniqueRanks.length - 1) return R + 0.5;  // 排在最后一名之后
+        return (R + uniqueRanks[i + 1]) / 2;     // 插入到 R 之后
+    }
+}
+
+/**
+ * 用 CSV 真实排名构建 students；无排名者随机插入并标记 isUnranked。
+ */
+function buildStudentsWithRanks(studentNames, gradesMap) {
+    const validRanks = [];
+    const students = studentNames.map((name, index) => {
+        const rawRank = gradesMap.has(name) ? gradesMap.get(name) : NaN;
+        const isUnranked = !Number.isFinite(rawRank) || rawRank <= 0;
+        if (!isUnranked) validRanks.push(rawRank);
+        if (!gradesMap.has(name)) {
+            console.warn(`[grades] 未在 CSV 中找到学生「${name}」，按未排名处理`);
+        }
+        return {
+            id: index + 1,
+            name: name,
+            rank: isUnranked ? null : rawRank,
+            isUnranked: isUnranked,
+            displayRank: isUnranked ? '?' : rawRank,
+            probability: 0,
+            isSpecial: name === '贾烨标',
+            isWebDeveloper: name === '李梦雨',
+            isCloudShaped: name === '原鑫椿',
+            isWangHenning: name === '王鹤凝',
+            isYuanZijie: name === '原梓杰',
+            hasFnIcon: name === '成浩宇',
+            hasYzyIcon: name === '延泽玉',
+            isColorfulWhite: name === '李湣帅'
+        };
+    });
+
+    const uniqueRanks = [...new Set(validRanks)].sort((a, b) => a - b);
+    const unrankedInfo = [];
+    students.forEach(s => {
+        if (s.isUnranked) {
+            s.rank = synthesizeRandomRank(uniqueRanks);
+            s.displayRank = '?';
+            unrankedInfo.push({ name: s.name, syntheticRank: s.rank });
+        }
+    });
+
+    if (unrankedInfo.length > 0) {
+        console.log('=== 未排名学生随机插入结果（本次加载）===');
+        unrankedInfo.forEach(info => {
+            console.log(`  ${info.name} → 合成排名 ${info.syntheticRank}（显示为 ?）`);
+        });
+    }
+    return students;
+}
+
+// ============================================================
+// 本地存储模块（RollCallStorage）
+// - 完整保存每次抽取结果、抽取次数、覆盖率集合
+// - 72小时自动重置（3天）
+// - 全员覆盖后自动清空覆盖率记录 + 恢复权重
+// - 数据持久化：应用重启后可恢复
+// ============================================================
+const RollCallStorage = (() => {
+    const STORAGE_KEY = 'rollcall_persist_v1';
+    const RESET_HOURS = 72;     // 3 天自动重置
+    const RESET_MS = RESET_HOURS * 60 * 60 * 1000;
+    const MAX_HISTORY_ITEMS = 50; // 最多保存 50 条历史记录
+
+    // 默认空数据
+    const emptyData = () => ({
+        schema_version: 1,
+        last_reset_timestamp: Date.now(),
+        pick_counts: {},                    // { studentId: number }
+        history: [],                        // [{ timestamp, time, count, people_ids, mode, group_data? }]
+        covered_ids: [],                    // number[] - 自上次重置后「已抽中过」的学生（唯一）
+        total_draws: 0
+    });
+
+    function _safeParse(text) {
+        try { return JSON.parse(text); } catch (e) { return null; }
+    }
+
+    function load() {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (!raw) return emptyData();
+            const d = _safeParse(raw);
+            if (!d || typeof d !== 'object' || d.schema_version !== 1) return emptyData();
+            // 字段兜底
+            if (!Number.isFinite(d.last_reset_timestamp)) d.last_reset_timestamp = Date.now();
+            if (!d.pick_counts || typeof d.pick_counts !== 'object') d.pick_counts = {};
+            if (!Array.isArray(d.history)) d.history = [];
+            if (!Array.isArray(d.covered_ids)) d.covered_ids = [];
+            if (!Number.isFinite(d.total_draws)) d.total_draws = 0;
+            // 72h 自动重置判断（加载时执行）
+            if (Date.now() - d.last_reset_timestamp >= RESET_MS) {
+                console.log(`[storage] 距上次重置已超过${RESET_HOURS}小时，自动清空持久化数据`);
+                const nd = emptyData();
+                _saveInternal(nd);
+                return nd;
+            }
+            return d;
+        } catch (e) {
+            console.warn('[storage] 读取失败，使用空数据：', e.message);
+            return emptyData();
+        }
+    }
+
+    function _saveInternal(data) {
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+        catch (e) { console.warn('[storage] 写入失败：', e.message); }
+    }
+
+    function save(data) { _saveInternal(data); }
+
+    // 手动触发 72h 检查（用于抽取前）
+    function checkAutoReset(data, nowMs = Date.now()) {
+        if (nowMs - data.last_reset_timestamp >= RESET_MS) {
+            console.log(`[storage] 抽取前检查：超时${RESET_HOURS}h，重置数据`);
+            const nd = emptyData();
+            nd.last_reset_timestamp = nowMs;
+            _saveInternal(nd);
+            return nd;
+        }
+        return data;
+    }
+
+    // 判断「是否全体学生都被抽过一遍」
+    function isFullCoverage(coveredIds, allStudentIds) {
+        if (!Array.isArray(allStudentIds) || allStudentIds.length === 0) return false;
+        const set = new Set(coveredIds);
+        return allStudentIds.every(id => set.has(id));
+    }
+
+    // 记录一次抽取（返回：是否触发了全员覆盖重置 + 新数据）
+    function recordDraw(data, params, allStudentIds) {
+        // params: { peopleIds: number[], count: number, time: string, mode: 'individual'|'group', groups?: [] }
+        const nowMs = Date.now();
+        let d = checkAutoReset(data, nowMs);
+
+        // 更新 pick_counts
+        const counts = { ...d.pick_counts };
+        params.peopleIds.forEach(id => {
+            counts[id] = (counts[id] || 0) + 1;
+        });
+
+        // 更新 covered_ids（唯一，保持顺序）
+        const coveredSet = new Set(d.covered_ids);
+        params.peopleIds.forEach(id => coveredSet.add(id));
+        let coveredList = Array.from(coveredSet);
+
+        // 保存历史（peopleIds 存 ID，恢复时再映射回 student 对象，避免名称/等级变化导致存储不一致）
+        const historyEntry = {
+            timestamp: nowMs,
+            time: params.time,
+            count: params.count,
+            mode: params.mode,
+            people_ids: params.peopleIds,
+            // groups 存精简版
+            groups: params.groups ? params.groups.map(g => ({
+                id: g.id,
+                name: g.name,
+                member_ids: g.members.map(m => m.id)
+            })) : null
+        };
+        const history = [historyEntry, ...d.history].slice(0, MAX_HISTORY_ITEMS);
+
+        const totalDraws = (d.total_draws || 0) + 1;
+
+        // 全员覆盖判定 → 清空覆盖率记录（保留 history 和 pick_counts 只清 covered_ids）
+        let coverageReset = false;
+        if (isFullCoverage(coveredList, allStudentIds)) {
+            console.log('[storage] 全员覆盖完成！清空覆盖率集合，下一轮恢复初始权重');
+            coveredList = [];
+            coverageReset = true;
+        }
+
+        const next = {
+            schema_version: 1,
+            last_reset_timestamp: d.last_reset_timestamp,
+            pick_counts: counts,
+            history: history,
+            covered_ids: coveredList,
+            total_draws: totalDraws,
+            _coverageReset: coverageReset
+        };
+        _saveInternal(next);
+        return next;
+    }
+
+    // 恢复 history 为前端可直接渲染的格式（people_ids → people 对象）
+    function hydrateHistory(rawHistory, studentsById, groupsById) {
+        return rawHistory.map(h => {
+            const people = (h.people_ids || []).map(id => studentsById[id]).filter(Boolean);
+            let groups = null;
+            if (h.groups && groupsById) {
+                groups = h.groups.map(gh => {
+                    const g = groupsById[gh.id];
+                    if (!g) return null;
+                    return { id: g.id, name: g.name, members: (gh.member_ids || []).map(mid => studentsById[mid]).filter(Boolean) };
+                }).filter(Boolean);
+            }
+            return {
+                time: h.time,
+                count: h.count,
+                mode: h.mode,
+                people: people,
+                groups: groups
+            };
+        });
+    }
+
+    // 手动清空（预留调试接口）
+    function clearAll() {
+        const nd = emptyData();
+        _saveInternal(nd);
+        return nd;
+    }
+
+    return {
+        STORAGE_KEY,
+        RESET_HOURS,
+        RESET_MS,
+        load,
+        save,
+        checkAutoReset,
+        recordDraw,
+        hydrateHistory,
+        isFullCoverage,
+        clearAll
+    };
+})();
+window.RollCallStorage = RollCallStorage;
+
+document.addEventListener('DOMContentLoaded', async () => {
     const studentNames = [
         '李志敏', '茹柯臻', '胡逸柯', '邢任静', '原鑫椿', '王铖浩', '白淼鑫', '原梓杰', 
         '崔恒语', '蒋鹕涛', '张浩楠', '冯炜杰', '李梦雨', '史梓瑜', '李怡萱', '刘艺博', 
@@ -355,20 +713,16 @@ document.addEventListener('DOMContentLoaded', () => {
         '段培清', '白阳兰', '赵渊博', '贾烨标', '赵晨旭', '赵育敏', '延泽玉', '李昀宵', '樊师彤'
     ];
 
-    const students = studentNames.map((name, index) => ({
-        id: index + 1,
-        name: name,
-        rank: index + 1,
-        probability: 0,
-        isSpecial: name === '贾烨标',
-        isWebDeveloper: name === '李梦雨',
-        isCloudShaped: name === '原鑫椿',
-        isWangHenning: name === '王鹤凝',
-        isYuanZijie: name === '原梓杰',
-        hasFnIcon: name === '成浩宇',
-        hasYzyIcon: name === '延泽玉',
-        isColorfulWhite: name === '李湣帅'
-    }));
+    // 加载排名数据（显示加载占位）
+    const _resultDisplay = document.getElementById('result-display');
+    if (_resultDisplay) {
+        _resultDisplay.innerHTML = `<div class="placeholder-text"><i class="fas fa-spinner fa-spin"></i><p>正在加载排名数据...</p></div>`;
+    }
+    const gradesMap = await loadGradesData();
+    const students = buildStudentsWithRanks(studentNames, gradesMap);
+    if (_resultDisplay) {
+        _resultDisplay.innerHTML = `<div class="placeholder-text"><i class="fas fa-random"></i><p>点击下方按钮开始抽取</p><p>系统将公平随机选择学生</p></div>`;
+    }
 
     // 小组定义
     const groupDefinitions = [
@@ -392,16 +746,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const rollCallSystem = new FairWeightedRollCall(students);
 
+    // ====== 从本地存储恢复数据 ======
+    const storageData = RollCallStorage.load();
+    const studentsById = {};
+    students.forEach(s => { studentsById[s.id] = s; });
+    const groupsById = {};
+    groups.forEach(g => { groupsById[g.id] = g; });
+    const allStudentIds = students.map(s => s.id);
+
+    // 恢复 pick_counts → studentPickCounts（跨重启的衰减记忆）
     const studentPickCounts = {};
     students.forEach(s => {
-        studentPickCounts[s.id] = 0;
+        studentPickCounts[s.id] = Number.isFinite(storageData.pick_counts[s.id]) ? storageData.pick_counts[s.id] : 0;
+    });
+    // 同步到 rollCallSystem（历史记录衰减）
+    Object.entries(studentPickCounts).forEach(([id, c]) => {
+        const nid = Number(id);
+        if (rollCallSystem.pickCounts[nid] !== undefined) rollCallSystem.pickCounts[nid] = c;
     });
 
     let selectedStudents = [...students];
     window._rollCallStudents = students;
     window._rollCallSelected = selectedStudents;
-    let history = [];
-    let totalDraws = 0;
+    // 从存储恢复 history（已 hydrated → 可直接渲染）
+    let history = RollCallStorage.hydrateHistory(storageData.history, studentsById, groupsById);
+    // 最多保留 10 条用于展示（存储保留 50 条）
+    if (history.length > 10) history = history.slice(0, 10);
+    // 保持一个「当前持久对象」的引用，供抽取流程更新
+    let currentStorage = storageData;
+    let totalDraws = Number.isFinite(storageData.total_draws) ? storageData.total_draws : 0;
     let currentResult = [];
     let isRolling = false;
     let isMusicPlaying = false;
@@ -498,7 +871,7 @@ document.addEventListener('DOMContentLoaded', () => {
         updateStatistics();
 
         if (onlyTop10) {
-            const hasNonTop10 = selectedStudents.some(s => s.rank > 10);
+            const hasNonTop10 = selectedStudents.some(s => s.isUnranked || s.rank > 10);
             if (hasNonTop10) {
                 onlyTop10 = false;
                 if (DOM.onlyTop10) {
@@ -524,7 +897,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.style.overflow = 'hidden';
         
         if (onlyTop10) {
-            selectedStudents = students.filter(s => s.rank <= 10);
+            selectedStudents = students.filter(s => !s.isUnranked && s.rank <= 10);
             updateSelectedCount();
         }
         
@@ -554,7 +927,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const selectedClass = selected ? ' selected' : '';
             
             let cardClasses = '';
-            if (student.rank <= 10) cardClasses += ' top-student-card';
+            if (!student.isUnranked && student.rank <= 10) cardClasses += ' top-student-card';
+            if (student.isUnranked) cardClasses += ' unranked-card';
             if (student.isSpecial) cardClasses += ' special-green-card';
             if (student.isWebDeveloper) cardClasses += ' web-developer-card';
             if (student.isCloudShaped) cardClasses += ' cloud-shaped-card';
@@ -583,6 +957,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 nameBadge = '<span class="yzj-badge"><i class="fas fa-crown"></i></span>';
             } else if (student.isColorfulWhite) {
                 nameBadge = '<span class="colorful-badge"><i class="fas fa-palette"></i></span>';
+            } else if (student.isUnranked) {
+                nameBadge = '<span class="mystery-badge"><i class="fas fa-question"></i></span>';
             }
             
             html += `
@@ -591,7 +967,7 @@ document.addEventListener('DOMContentLoaded', () => {
                      tabindex="0"
                      aria-selected="${selected}"
                      role="option">
-                    <div class="student-avatar ${student.rank <= 10 ? 'top-student' : ''}">
+                    <div class="student-avatar ${!student.isUnranked && student.rank <= 10 ? 'top-student' : ''}">
                         ${avatarIcon || student.name.charAt(0)}
                     </div>
                     <div class="student-info">
@@ -599,7 +975,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             ${student.name}
                             ${nameBadge}
                         </div>
-                        <div class="student-rank">第${student.rank}名</div>
+                        <div class="student-rank">${student.isUnranked ? '第?名' : '第' + student.rank + '名'}</div>
                     </div>
                     <div class="selection-indicator">
                         <i class="fas ${selected ? 'fa-check-circle' : 'fa-circle'}"></i>
@@ -653,7 +1029,8 @@ document.addEventListener('DOMContentLoaded', () => {
         result.forEach(student => {
             const classes = ['result-badge'];
             
-            if (student.rank <= 11) classes.push('golden');
+            if (!student.isUnranked && student.rank <= 11) classes.push('golden');
+            if (student.isUnranked) classes.push('mystery');
             if (student.isSpecial) classes.push('special-green');
             if (student.isWebDeveloper) classes.push('web-developer-result');
             if (student.isCloudShaped) classes.push('cloud-shaped');
@@ -661,7 +1038,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (student.isYuanZijie) classes.push('yuan-zijie');
             if (student.isColorfulWhite) classes.push('colorful-white');
             
-            if (student.rank > 11 && !student.isSpecial && !student.isWebDeveloper && 
+            if (!student.isUnranked && student.rank > 11 && !student.isSpecial && !student.isWebDeveloper && 
                 !student.isCloudShaped && !student.isWangHenning && !student.isYuanZijie && !student.isColorfulWhite) {
                 classes.push('blue');
             }
@@ -701,7 +1078,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 innerHtml += '<span class="web-dev-mini-badge"><i class="fas fa-code"></i></span>';
             }
             
-            innerHtml += `<span class="badge-rank highlight-rank">第${student.rank}名</span>`;
+            innerHtml += `<span class="badge-rank highlight-rank">${student.isUnranked ? '第?名' : '第' + student.rank + '名'}</span>`;
             
             html += `<span class="${classes.join(' ')}">${innerHtml}</span>`;
         });
@@ -730,7 +1107,8 @@ document.addEventListener('DOMContentLoaded', () => {
         groupResults.forEach(group => {
             const memberCards = group.members.map(member => {
                 let cardClasses = ['group-member-card'];
-                if (member.rank <= 11) cardClasses.push('golden');
+                if (!member.isUnranked && member.rank <= 11) cardClasses.push('golden');
+                if (member.isUnranked) cardClasses.push('mystery');
                 if (member.isSpecial) cardClasses.push('special-green');
                 if (member.isWebDeveloper) cardClasses.push('web-developer-result');
                 if (member.isCloudShaped) cardClasses.push('cloud-shaped');
@@ -738,7 +1116,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (member.isYuanZijie) cardClasses.push('yuan-zijie');
                 if (member.isColorfulWhite) cardClasses.push('colorful-white');
 
-                if (member.rank > 11 && !member.isSpecial && !member.isWebDeveloper &&
+                if (!member.isUnranked && member.rank > 11 && !member.isSpecial && !member.isWebDeveloper &&
                     !member.isCloudShaped && !member.isWangHenning && !member.isYuanZijie && !member.isColorfulWhite) {
                     cardClasses.push('blue');
                 }
@@ -772,7 +1150,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             ${nameContent}
                             ${badge}
                         </div>
-                        <div class="member-rank">第${member.rank}名</div>
+                        <div class="member-rank">${member.isUnranked ? '第?名' : '第' + member.rank + '名'}</div>
                     </div>
                 `;
             }).join('');
@@ -853,7 +1231,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function weightedRandomSelection(items, count) {
         const tempSystem = new FairWeightedRollCall(items, {
             guaranteeRatio: 0.25,
-            decayFactor: 0.9
+            decayFactor: 0.9,
+            coveredIds: (currentStorage && currentStorage.covered_ids && currentStorage.covered_ids.length > 0)
+                ? new Set(currentStorage.covered_ids)
+                : null
         });
         
         items.forEach(item => {
@@ -908,9 +1289,9 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             eligibleItems = [...selectedStudents];
             if (onlyTop10) {
-                eligibleItems = eligibleItems.filter(s => s.rank <= 10);
+                eligibleItems = eligibleItems.filter(s => !s.isUnranked && s.rank <= 10);
                 if (eligibleItems.length === 0) {
-                    showToast('提示', '当前选择的学生中没有前10名学生');
+                    showToast('提示', '当前选择的学生中没有实际排名前10名的学生');
                     return;
                 }
             }
@@ -1061,23 +1442,57 @@ document.addEventListener('DOMContentLoaded', () => {
                         renderResult(currentResult);
                     }
 
+                    // 结果揭晓彩带粒子：从结果卡片实际位置爆发，跟随布局避免错位
+                    if (window.celebrateConfetti) {
+                        try {
+                            const _confettiTarget =
+                                DOM.resultDisplay.querySelector('.result-names')
+                                || DOM.resultDisplay.querySelector('.group-result-container')
+                                || DOM.resultDisplay.querySelector('.result-badge-wrapper')
+                                || DOM.resultDisplay.querySelector('.result-badge')
+                                || DOM.resultDisplay;
+                            window.celebrateConfetti({ element: _confettiTarget });
+                        } catch (e) { /* 忽略彩带异常 */ }
+                    }
+
                     recentHistory.push(...currentResult);
                     if (recentHistory.length > maxHistoryLength) {
                         recentHistory = recentHistory.slice(recentHistory.length - maxHistoryLength);
                     }
-                    totalDraws++;
+
                     const now = new Date();
                     const timeString = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
-                    history.unshift({
-                        time: timeString,
+
+                    // 抽取结果 → 个人模式取 currentResult，小组模式取所有成员
+                    const pickedPeople = isGroupMode
+                        ? finalResult.map(p => p._group).flatMap(g => g.members)
+                        : currentResult;
+                    const pickedIds = pickedPeople.map(p => p.id);
+                    const pickedGroups = isGroupMode ? finalResult.map(p => p._group) : null;
+
+                    // ====== 写入本地存储 ======
+                    currentStorage = RollCallStorage.recordDraw(currentStorage, {
+                        peopleIds: pickedIds,
                         count: count,
-                        people: isGroupMode ? finalResult.map(p => p._group).flatMap(g => g.members) : currentResult,
-                        groups: isGroupMode ? finalResult.map(p => p._group) : null,
-                        mode: drawMode
+                        time: timeString,
+                        mode: drawMode,
+                        groups: pickedGroups
+                    }, allStudentIds);
+
+                    // 从存储重新同步 pick_counts、history、totalDraws（确保显示与存储一致）
+                    Object.entries(currentStorage.pick_counts).forEach(([id, c]) => {
+                        const nid = Number(id);
+                        if (studentPickCounts[nid] !== undefined) studentPickCounts[nid] = c;
                     });
-                    if (history.length > 10) {
-                        history.pop();
+                    history = RollCallStorage.hydrateHistory(currentStorage.history, studentsById, groupsById);
+                    if (history.length > 10) history = history.slice(0, 10);
+                    totalDraws = currentStorage.total_draws;
+
+                    // 全员覆盖清空提示
+                    if (currentStorage._coverageReset) {
+                        showToast('完成', '全员已抽取覆盖，覆盖率权重重置');
                     }
+
                     isRolling = false;
                     DOM.startDrawingBtn.innerHTML = '<i class="fas fa-play"></i>开始抽取';
                     DOM.startDrawingBtn.disabled = false;
@@ -1088,7 +1503,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     renderHistory();
                     updateStatistics();
-                    showToast('成功', isGroupMode ? `已抽取${count}个小组` : `已抽取${count}名学生`);
+                    if (!currentStorage._coverageReset) {
+                        showToast('成功', isGroupMode ? `已抽取${count}个小组` : `已抽取${count}名学生`);
+                    }
                 }
             } catch (error) {
                 console.error('抽取动画发生错误:', error);
@@ -1209,7 +1626,21 @@ document.addEventListener('DOMContentLoaded', () => {
         DOM.startDrawingBtn.addEventListener('click', startDrawing);
         DOM.onlyTop10.addEventListener('change', (e) => {
             onlyTop10 = e.target.checked;
-
+            if (onlyTop10) {
+                const beforeCount = selectedStudents.length;
+                selectedStudents = selectedStudents.filter(s => !s.isUnranked && s.rank <= 10);
+                window._rollCallSelected = selectedStudents;
+                if (selectedStudents.length === 0) {
+                    selectedStudents = students.filter(s => !s.isUnranked && s.rank <= 10);
+                    window._rollCallSelected = selectedStudents;
+                }
+                const actualTop10 = students.filter(s => !s.isUnranked && s.rank <= 10);
+                showToast('提示', `仅抽取前10名已启用（实际前10名共${actualTop10.length}人，当前已选${selectedStudents.length}人）`);
+                updateSelectedCount();
+                updateStatistics();
+            } else {
+                showToast('提示', '已取消"仅抽取前10名"限制');
+            }
         });
 
         if (DOM.drawModeToggle) {
@@ -1237,6 +1668,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function init() {
         setupEventListeners();
         updateStatistics();
+        renderHistory();
         fetchGenshinQuote();
         setInterval(fetchGenshinQuote, 30000);
         
@@ -1250,7 +1682,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const stats = rollCallSystem.getStatistics();
         console.log('\n=== 统计信息 ===');
         console.log(`第1名概率: ${stats.firstStudentProbability}`);
-        console.log(`第41名概率: ${stats.lastStudentProbability}`);
+        console.log(`末名概率: ${stats.lastStudentProbability}`);
         console.log(`概率比例: ${stats.probabilityRatio}`);
     }
 
