@@ -710,7 +710,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         '崔恒语', '蒋鹕涛', '张浩楠', '冯炜杰', '李梦雨', '史梓瑜', '李怡萱', '刘艺博', 
         '李帅辉', '原章恬', '王彦景', '张艺瀚', '张祺曼', '元静怡', '王鹤凝', '成浩宇', 
         '晋奥钊', '杜桓荣', '李湣帅', '焦雅琦', '马梓宁', '马欣怡', '王云鹏', '段晶晶', 
-        '段培清', '白阳兰', '赵渊博', '贾烨标', '赵晨旭', '赵育敏', '延泽玉', '李昀宵', '樊师彤'
+        '段培清', '白阳兰', '赵渊博', '贾烨标', '赵晨旭', '赵育敏', '延泽玉', '李昀宵', '樊师彤',
+        '郭迅宇'
     ];
 
     // 加载排名数据（显示加载占位）
@@ -1269,34 +1270,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (isRolling) return;
 
-        // ====== 上课时间守卫：非上课时间默认阻断抽取 ======
+        // ====== 上课时间守卫：非上课时间可抽取但不入库 ======
         // 设计要点：
-        //   - 默认严格模式：非上课时间一律拒绝抽取（满足「不被抽取」要求）
-        //   - 强制覆盖通道：window._allowOutOfClassDraws=true 时允许越界
-        //     （油猴脚本补录历史场景使用，记录会被标记 is_valid=false）
-        //   - 即使被强制放行，HistoryStore 仍会以 invalid_reason 标注，
-        //     确保后续查询可过滤出这些「越界记录」
-        if (window.classTimeGuard && !window.classTimeGuard.isInClassTime()) {
-            if (!window._allowOutOfClassDraws) {
-                const nextPeriod = (function tryGuessNext() {
-                    try {
-                        // 借助 scheduleManager 预告下一节（仅用于提示文案，不影响逻辑）
-                        if (typeof ScheduleManager !== 'undefined') {
-                            const mgr = new ScheduleManager();
-                            return mgr.getNextPeriod(new Date());
-                        }
-                    } catch (e) { /* 忽略 */ }
-                    return null;
-                })();
-                const tip = nextPeriod
-                    ? `当前不在上课时间，下一节「${nextPeriod.name}」${nextPeriod.start} 开始`
-                    : '当前不在上课时间，无法抽取';
-                showToast('已拦截', tip);
-                return;
-            }
-            // 强制模式仅提示一次，不阻断
-            console.warn('[classTimeGuard] 已开启 _allowOutOfClassDraws，本次抽取将作为越界记录入档');
-        }
+        //   - 抽取动作本身不受时间限制（任何时候都可抽取）
+        //   - 但非上课时间的抽取结果不写入历史记录、不计入统计
+        //   - window._allowOutOfClassDraws=true 时强制入库（标记 is_valid=false，
+        //     供油猴脚本补录历史场景使用）
+        const _inClassTime = !window.classTimeGuard || window.classTimeGuard.isInClassTime();
+        const _shouldRecord = _inClassTime || !!window._allowOutOfClassDraws;
 
         let eligibleItems;
 
@@ -1499,36 +1480,41 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const pickedIds = pickedPeople.map(p => p.id);
                     const pickedGroups = isGroupMode ? finalResult.map(p => p._group) : null;
 
-                    // ====== 写入本地存储 ======
-                    currentStorage = RollCallStorage.recordDraw(currentStorage, {
-                        peopleIds: pickedIds,
-                        count: count,
-                        time: timeString,
-                        mode: drawMode,
-                        groups: pickedGroups
-                    }, allStudentIds);
+                    // ====== 上课时间守卫：仅上课时间（或强制模式）才入库 ======
+                    if (_shouldRecord) {
+                        // ====== 写入本地存储 ======
+                        currentStorage = RollCallStorage.recordDraw(currentStorage, {
+                            peopleIds: pickedIds,
+                            count: count,
+                            time: timeString,
+                            mode: drawMode,
+                            groups: pickedGroups
+                        }, allStudentIds);
 
-                    // ====== 镜像写入规范化历史记录（HistoryStore） ======
-                    // 目的：将本次抽取同步到统一的 schema_version=2 存储，
-                    //       供油猴脚本 / 后续审计 / 数据导出使用。
-                    // 验证：HistoryStore.add 内部会调用 classTimeGuard 校验时间，
-                    //       若处于非上课时间（强制模式），记录会被标记 is_valid=false。
-                    if (window.historyStore) {
-                        try {
-                            window.historyStore.add({
-                                timestamp: Date.now(),
-                                display_time: timeString,
-                                mode: drawMode,
-                                count: count,
-                                people_ids: pickedIds,
-                                groups: pickedGroups
-                            }, {
-                                forceAcceptInvalid: !!window._allowOutOfClassDraws,
-                                operator: 'system'
-                            });
-                        } catch (e) {
-                            console.warn('[historyStore] 镜像写入失败：', e.message);
+                        // ====== 镜像写入规范化历史记录（HistoryStore） ======
+                        // 目的：将本次抽取同步到统一的 schema_version=2 存储，
+                        //       供油猴脚本 / 后续审计 / 数据导出使用。
+                        // 验证：HistoryStore.add 内部会调用 classTimeGuard 校验时间，
+                        //       若处于非上课时间（强制模式），记录会被标记 is_valid=false。
+                        if (window.historyStore) {
+                            try {
+                                window.historyStore.add({
+                                    timestamp: Date.now(),
+                                    display_time: timeString,
+                                    mode: drawMode,
+                                    count: count,
+                                    people_ids: pickedIds,
+                                    groups: pickedGroups
+                                }, {
+                                    forceAcceptInvalid: !_inClassTime,
+                                    operator: 'system'
+                                });
+                            } catch (e) {
+                                console.warn('[historyStore] 镜像写入失败：', e.message);
+                            }
                         }
+                    } else {
+                        console.info('[classTimeGuard] 非上课时间抽取，不写入历史记录');
                     }
 
                     // 从存储重新同步 pick_counts、history、totalDraws（确保显示与存储一致）

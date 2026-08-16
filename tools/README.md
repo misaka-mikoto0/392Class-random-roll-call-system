@@ -30,7 +30,7 @@
 - **审计日志**：完整记录所有写操作（动作 / 操作者 / 时间 / 前/后快照），
   满足「可追溯性」要求。
 - **设置**：
-  - 切换「允许越界抽取」总开关（影响页面 `开始抽取` 按钮的拦截行为）。
+  - 切换「允许越界入库」总开关（非上课时间抽取默认不入库，开启后强制入库并标记 is_valid=false）。
   - 查看存储键名与统计信息。
   - 导出当前全部记录为 JSON 文件（不影响存储）。
   - 清空全部记录（保留审计日志，便于事后追溯）。
@@ -42,7 +42,7 @@
    ↓
 script.js → startDrawing()
    ↓
-window.classTimeGuard.isInClassTime() ── false ──► 默认阻断 + Toast 提示
+window.classTimeGuard.isInClassTime() ── false ──► 正常抽取，但不写入历史记录
    │ true (或 _allowOutOfClassDraws=true)
    ↓
 执行抽取动画 + 计算最终结果
@@ -87,7 +87,7 @@ window.historyStore.add(...)               ← 新规范化存储（带验证+�
 ```javascript
 window.classTimeGuard          // ClassTimeGuard 实例
 window.historyStore            // HistoryStore 实例
-window._allowOutOfClassDraws   // 越界抽取总开关（默认 false）
+window._allowOutOfClassDraws   // 越界入库总开关（默认 false：非上课时间抽取不入库）
 window.DEFAULT_PERIODS         // 节次配置常量
 window.ClassTimeGuard          // 构造器（供扩展/测试）
 window.HistoryStore            // 构造器（供扩展/测试）

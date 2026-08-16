@@ -4,11 +4,8 @@
 // @version      1.0.0
 // @description  访问并修改 392 班随机点名系统的历史记录，提供可视化界面、审计日志与撤销能力，所有修改可追溯。
 // @author       392班开发组
-// @match        file:///*/index.html*
-// @match        file:///*/392Class-random-roll-call-system-main*
-// @match        *://*/*/index.html*
-// @match        *://localhost/*/index.html*
-// @match        *://127.0.0.1/*/index.html*
+// @match        https://sjdm.my0811.cn/*
+// @match        https://sjdm.my0811.cn/*index.html*
 // @icon         data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📜</text></svg>
 // @grant        none
 // @run-at       document-idle
@@ -27,7 +24,7 @@
  *    3. 支持新增、编辑、删除记录；所有写操作走 HistoryStore API
  *       → 自动写入 audit_log，实现「可追溯」
  *    4. 支持「撤销最近一次」操作（基于 audit_log）
- *    5. 支持切换「允许越界抽取」总开关（window._allowOutOfClassDraws）
+ *    5. 支持切换「允许越界入库」总开关（window._allowOutOfClassDraws）
  *
  *  设计要点：
  *    - @grant none：脚本运行在页面上下文，直接访问 window.historyStore
@@ -346,8 +343,8 @@
         body.innerHTML = `
             <div class="rc-hist-settings-row">
                 <div class="rc-hist-settings-label">
-                    <h4>允许越界抽取</h4>
-                    <p>开启后，非上课时间也可触发抽取（记录会标记为「越界」）。默认关闭。</p>
+                    <h4>允许越界入库</h4>
+                    <p>开启后，非上课时间的抽取也会写入历史记录（标记为「越界」）。默认关闭时越界抽取不入库。</p>
                 </div>
                 <label class="rc-hist-switch">
                     <input type="checkbox" id="rc-hist-toggle-out" ${allowOut ? 'checked' : ''}>
@@ -387,7 +384,7 @@
 
         body.querySelector('#rc-hist-toggle-out').addEventListener('change', (e) => {
             window._allowOutOfClassDraws = e.target.checked;
-            toast(`越界抽取已${e.target.checked ? '开启' : '关闭'}`);
+            toast(`越界入库已${e.target.checked ? '开启' : '关闭'}`);
         });
         body.querySelector('#rc-hist-export').addEventListener('click', exportData);
         body.querySelector('#rc-hist-clear-all').addEventListener('click', clearAllWithConfirm);

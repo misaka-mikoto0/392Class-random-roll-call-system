@@ -46,16 +46,17 @@ const DEFAULT_PERIODS = Object.freeze([
  */
 const BUILD_META = Object.freeze({
     /** 语义化版本号：每次发版或功能有显著变化时递增 */
-    VERSION: '2.4.0',
+    VERSION: '2.4.1',
     /** 构建日期（YYYY-MM-DD）：与代码最后一次打包/发布日期保持一致 */
     BUILD_DATE: '2026-08-16',
     /** 简短变更摘要，用于控制台输出提示（不显示在 UI 上） */
     RELEASE_NOTES: [
         '提取 DEFAULT_PERIODS 单一数据源 + ClassTimeGuard 上课时间守卫',
         '新增 HistoryStore 规范化历史存储（带校验 + 审计日志）',
-        '抽取流程接入上课时间校验 + 双存储镜像写入',
+        '抽取流程接入上课时间校验：非上课时间可抽但不入库',
         '新增 Tampermonkey 历史记录编辑器油猴脚本',
-        '页脚新增构建元数据展示（版本 / 日期 / 最近修改时间）'
+        '页脚新增构建元数据展示（版本 / 日期 / 最近修改时间）',
+        '新增郭迅宇（未参加考试，成绩记 0）'
     ]
 });
 
@@ -863,8 +864,9 @@ class HistoryStore {
 // 设计说明：
 //   - classTimeGuard 是「时间合法性」的全局仲裁者
 //   - historyStore 是「规范化历史记录」的全局入口
-//   - 通过 window._allowOutOfClassDraws 开关可临时允许越界抽取
-//     （默认 false：严格阻断非上课时间的抽取请求）
+//   - 通过 window._allowOutOfClassDraws 开关可临时允许越界入库
+//     （默认 false：非上课时间抽取照常进行，但不写入历史记录；
+//      置为 true 时强制入库，记录标记 is_valid=false，供油猴脚本补录）
 // ============================================================
 (function initGlobalInstances() {
     if (typeof window === 'undefined') return;
