@@ -1269,6 +1269,35 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (isRolling) return;
 
+        // ====== 上课时间守卫：非上课时间默认阻断抽取 ======
+        // 设计要点：
+        //   - 默认严格模式：非上课时间一律拒绝抽取（满足「不被抽取」要求）
+        //   - 强制覆盖通道：window._allowOutOfClassDraws=true 时允许越界
+        //     （油猴脚本补录历史场景使用，记录会被标记 is_valid=false）
+        //   - 即使被强制放行，HistoryStore 仍会以 invalid_reason 标注，
+        //     确保后续查询可过滤出这些「越界记录」
+        if (window.classTimeGuard && !window.classTimeGuard.isInClassTime()) {
+            if (!window._allowOutOfClassDraws) {
+                const nextPeriod = (function tryGuessNext() {
+                    try {
+                        // 借助 scheduleManager 预告下一节（仅用于提示文案，不影响逻辑）
+                        if (typeof ScheduleManager !== 'undefined') {
+                            const mgr = new ScheduleManager();
+                            return mgr.getNextPeriod(new Date());
+                        }
+                    } catch (e) { /* 忽略 */ }
+                    return null;
+                })();
+                const tip = nextPeriod
+                    ? `当前不在上课时间，下一节「${nextPeriod.name}」${nextPeriod.start} 开始`
+                    : '当前不在上课时间，无法抽取';
+                showToast('已拦截', tip);
+                return;
+            }
+            // 强制模式仅提示一次，不阻断
+            console.warn('[classTimeGuard] 已开启 _allowOutOfClassDraws，本次抽取将作为越界记录入档');
+        }
+
         let eligibleItems;
 
         if (isGroupMode) {
@@ -1478,6 +1507,29 @@ document.addEventListener('DOMContentLoaded', async () => {
                         mode: drawMode,
                         groups: pickedGroups
                     }, allStudentIds);
+
+                    // ====== 镜像写入规范化历史记录（HistoryStore） ======
+                    // 目的：将本次抽取同步到统一的 schema_version=2 存储，
+                    //       供油猴脚本 / 后续审计 / 数据导出使用。
+                    // 验证：HistoryStore.add 内部会调用 classTimeGuard 校验时间，
+                    //       若处于非上课时间（强制模式），记录会被标记 is_valid=false。
+                    if (window.historyStore) {
+                        try {
+                            window.historyStore.add({
+                                timestamp: Date.now(),
+                                display_time: timeString,
+                                mode: drawMode,
+                                count: count,
+                                people_ids: pickedIds,
+                                groups: pickedGroups
+                            }, {
+                                forceAcceptInvalid: !!window._allowOutOfClassDraws,
+                                operator: 'system'
+                            });
+                        } catch (e) {
+                            console.warn('[historyStore] 镜像写入失败：', e.message);
+                        }
+                    }
 
                     // 从存储重新同步 pick_counts、history、totalDraws（确保显示与存储一致）
                     Object.entries(currentStorage.pick_counts).forEach(([id, c]) => {

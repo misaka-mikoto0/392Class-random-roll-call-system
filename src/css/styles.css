@@ -2402,6 +2402,38 @@ body {
     font-size: var(--tx-font-size-sm);
 }
 
+/* 页脚 · 构建元数据信息行 */
+.app-footer .build-info {
+    margin-top: var(--tx-spacing-xs);
+    font-size: var(--tx-font-size-xs);
+    color: var(--tx-text-tertiary);
+    letter-spacing: 0.2px;
+    user-select: text;
+    /* 鼠标悬浮时略微显眼，方便复制版本号 */
+    transition: color 0.2s ease;
+}
+
+.app-footer .build-info:hover {
+    color: var(--tx-text-secondary);
+}
+
+.app-footer .build-info i {
+    margin-right: 4px;
+    opacity: 0.75;
+}
+
+.app-footer .build-info .build-sep {
+    margin: 0 6px;
+    opacity: 0.4;
+}
+
+/* 通过 CSS 变量作为「构建时间校验点」：
+   如果页面用的是旧 CSS，这里 --build-sentinel 不会是 20260816，
+   结合 JS 中的 BUILD_META 可以快速排查前端资源是否混版。*/
+.app-footer {
+    --build-sentinel: 20260816;
+}
+
 /* 空状�?*/
 .empty-state {
     text-align: center;
