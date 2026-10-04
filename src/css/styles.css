@@ -3072,3 +3072,103 @@ body {
     color: var(--tx-text-tertiary);
     text-align: center;
 }
+
+/* ============================
+   UI Polish Layer
+   Non-destructive visual enhancements (append-only, no layout changes)
+   ============================ */
+
+/* 1. Group mode button is hidden by request.
+      [hidden] must be forced because .mode-toggle is a flex container. */
+.mode-btn[hidden] {
+    display: none !important;
+}
+
+/* When only one mode button remains visible, soften the toggle chrome. */
+.mode-toggle:has(.mode-btn[hidden]) {
+    background: transparent;
+    border-color: transparent;
+    padding: 0;
+}
+
+/* 2. Tabular numerals: stop digits from jittering while values update. */
+.stat-value,
+#participation-percentage,
+#footer-stats,
+.selected-count,
+.result-count {
+    font-variant-numeric: tabular-nums;
+}
+
+/* 3. Consistent keyboard focus ring (accessibility). */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+.tx-btn:focus-visible,
+.mode-btn:focus-visible,
+.control-btn:focus-visible,
+.modal-btn:focus-visible,
+.floating-btn:focus-visible {
+    outline: 2px solid var(--tx-secondary);
+    outline-offset: 2px;
+    border-radius: var(--tx-radius-sm);
+}
+
+/* 4. Honest disabled state: no lift, no glow. */
+.tx-btn:disabled,
+.tx-btn:disabled:hover {
+    transform: none !important;
+    box-shadow: none;
+    filter: saturate(0.55);
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+/* 5. Softer card surfaces with a hint of depth. */
+.title-card,
+.sidebar-card {
+    background-image: linear-gradient(180deg,
+        rgba(255, 255, 255, 0.92) 0%,
+        rgba(247, 248, 250, 0.72) 100%);
+    border-color: rgba(29, 33, 41, 0.06);
+}
+
+/* 6. Spotlight behind the draw area (background only, layout untouched). */
+.result-display {
+    background: radial-gradient(circle at 50% 45%,
+        rgba(7, 193, 96, 0.07) 0%,
+        rgba(7, 193, 96, 0) 62%);
+    border-radius: var(--tx-radius-lg);
+}
+
+/* 7. Slim scrollbars for scrollable panels. */
+.history-list,
+.modal-body {
+    scrollbar-width: thin;
+    scrollbar-color: var(--tx-border) transparent;
+}
+.history-list::-webkit-scrollbar,
+.modal-body::-webkit-scrollbar {
+    width: 6px;
+}
+.history-list::-webkit-scrollbar-thumb,
+.modal-body::-webkit-scrollbar-thumb {
+    background: var(--tx-border);
+    border-radius: 3px;
+}
+.history-list::-webkit-scrollbar-track,
+.modal-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* 8. Respect the user's reduced-motion preference. */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
+    }
+}

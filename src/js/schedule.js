@@ -15,17 +15,17 @@
  */
 const DEFAULT_PERIODS = Object.freeze([
     { name: '第1节', start: '05:45', end: '07:10', duration: 85 },
-    { name: '第2节', start: '08:05', end: '08:50', duration: 45 },
-    { name: '第3节', start: '09:00', end: '09:45', duration: 45 },
-    { name: '第4节', start: '10:20', end: '11:05', duration: 45 },
-    { name: '第5节', start: '11:15', end: '12:00', duration: 45 },
-    { name: '第6节', start: '14:30', end: '15:15', duration: 45 },
-    { name: '第7节', start: '15:25', end: '16:10', duration: 45 },
-    { name: '第8节', start: '16:20', end: '17:05', duration: 45 },
-    { name: '第9节', start: '17:35', end: '18:20', duration: 45 },
-    { name: '第10节', start: '19:00', end: '19:50', duration: 50 },
-    { name: '第11节', start: '20:00', end: '20:50', duration: 50 },
-    { name: '第12节', start: '21:00', end: '22:00', duration: 60 }
+    { name: '第2节', start: '08:05', end: '08:45', duration: 40 },
+    { name: '第3节', start: '09:00', end: '09:40', duration: 40 },
+    { name: '第4节', start: '10:20', end: '11:00', duration: 40 },
+    { name: '第5节', start: '11:15', end: '11:55', duration: 40 },
+    { name: '第6节', start: '14:30', end: '15:10', duration: 40 },
+    { name: '第7节', start: '15:25', end: '16:05', duration: 40 },
+    { name: '第8节', start: '16:20', end: '17:00', duration: 40 },
+    { name: '第9节', start: '17:20', end: '18:30', duration: 70 },
+    { name: '第10节', start: '19:10', end: '20:00', duration: 50 },
+    { name: '第11节', start: '20:10', end: '21:00', duration: 50 },
+    { name: '第12节', start: '21:10', end: '22:20', duration: 70 }
 ]);
 
 /**
@@ -46,17 +46,16 @@ const DEFAULT_PERIODS = Object.freeze([
  */
 const BUILD_META = Object.freeze({
     /** 语义化版本号：每次发版或功能有显著变化时递增 */
-    VERSION: '2.4.1',
+    VERSION: '2.5.0',
     /** 构建日期（YYYY-MM-DD）：与代码最后一次打包/发布日期保持一致 */
-    BUILD_DATE: '2026-08-16',
+    BUILD_DATE: '2026-10-04',
     /** 简短变更摘要，用于控制台输出提示（不显示在 UI 上） */
     RELEASE_NOTES: [
-        '提取 DEFAULT_PERIODS 单一数据源 + ClassTimeGuard 上课时间守卫',
-        '新增 HistoryStore 规范化历史存储（带校验 + 审计日志）',
-        '抽取流程接入上课时间校验：非上课时间可抽但不入库',
-        '新增 Tampermonkey 历史记录编辑器油猴脚本',
-        '页脚新增构建元数据展示（版本 / 日期 / 最近修改时间）',
-        '新增郭迅宇（未参加考试，成绩记 0）'
+        '作息调整：常规课单节 40 分钟，同步校准各节 duration',
+        '移除学生段培清（名单 / 八组 / 成绩数据同步）',
+        '隐藏小组抽取模式入口',
+        'UI 细节优化：焦点环、等宽数字、卡片质感、细滚动条、降低动效支持',
+        '新增到场缓冲：尚未进入教室的时段内不参与候选'
     ]
 });
 

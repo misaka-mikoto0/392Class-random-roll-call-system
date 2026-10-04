@@ -404,7 +404,6 @@ const GRADES_CSV_FALLBACK = `姓名,总分排名,语文排名,数学排名,英�
 张祺曼,25,12,23,21,20,20,25
 李帅辉,26,20,23,19,26,29,5
 张艺瀚,27,20,11,15,33,27,30
-段培清,28,34,20,12,22,29,27
 马梓宁,29,6,33,4,38,33,27
 焦雅琦,30,31,21,26,31,23,13
 王云鹏,31,16,37,31,6,25,12
@@ -710,7 +709,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         '崔恒语', '蒋鹕涛', '张浩楠', '冯炜杰', '李梦雨', '史梓瑜', '李怡萱', '刘艺博', 
         '李帅辉', '原章恬', '王彦景', '张艺瀚', '张祺曼', '元静怡', '王鹤凝', '成浩宇', 
         '晋奥钊', '杜桓荣', '李湣帅', '焦雅琦', '马梓宁', '马欣怡', '王云鹏', '段晶晶', 
-        '段培清', '白阳兰', '赵渊博', '贾烨标', '赵晨旭', '赵育敏', '延泽玉', '李昀宵', '樊师彤',
+        '白阳兰', '赵渊博', '贾烨标', '赵晨旭', '赵育敏', '延泽玉', '李昀宵', '樊师彤',
         '郭迅宇'
     ];
 
@@ -734,7 +733,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         { name: '五组', members: ['原鑫椿', '李梦雨', '李湣帅', '赵渊博'] },
         { name: '六组', members: ['白淼鑫', '李帅辉', '晋奥钊', '赵晨旭', '李昀宵'] },
         { name: '七组', members: ['王铖浩', '刘艺博', '杜桓荣', '段晶晶'] },
-        { name: '八组', members: ['原梓杰', '李怡萱', '王云鹏', '段培清'] },
+        { name: '八组', members: ['原梓杰', '李怡萱', '王云鹏'] },
         { name: '九组', members: ['崔恒语', '张浩楠', '马梓宁', '白阳兰'] },
         { name: '十组', members: ['蒋鹕涛', '冯炜杰', '焦雅琦', '马欣怡'] }
     ];
@@ -1253,6 +1252,43 @@ document.addEventListener('DOMContentLoaded', async () => {
         return result;
     }
 
+    // ============================================================
+    // 到场缓冲（Late Arrival Buffer）
+    // ------------------------------------------------------------
+    // 背景：个别同学行动不便，上课约 5 分钟后才能进入教室。若在这段
+    //       窗口内被抽中，她物理上无法作答 —— 点名既无效，也会让她
+    //       在全班面前陷入尴尬。
+    // 处理：仅在「尚未进入教室」的窗口内，将其从候选池中移除；到场后
+    //       立即恢复，抽取权重与概率和其他同学完全一致。
+    // 边界：窗口取 [上课前 beforeMinutes, 上课后 afterMinutes)，
+    //       与 DEFAULT_PERIODS 的每节课起止联动，无需单独维护时间表。
+    // 注意：本逻辑不做任何 UI 提示、不写 toast、不落记录字段，
+    //       以免在界面上凸显个体差异。
+    // ============================================================
+    const LATE_ARRIVAL_BUFFER = Object.freeze({
+        beforeMinutes: 10,   // 含教师在课前提前点名的场景
+        afterMinutes: 5,     // 上课约 5 分钟后进入教室
+        names: ['李梦雨']    // 不再需要时清空此数组即可
+    });
+
+    /** 判定给定时刻是否处于「该生尚未进入教室」的窗口 */
+    function isWithinLateArrivalWindow(time) {
+        const periods = window.DEFAULT_PERIODS;
+        if (!Array.isArray(periods) || periods.length === 0) return false;
+
+        const total = time.getHours() * 60 + time.getMinutes();
+        for (const p of periods) {
+            const parts = String(p.start).split(':');
+            const startMin = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+            if (!Number.isFinite(startMin)) continue;
+            if (total >= startMin - LATE_ARRIVAL_BUFFER.beforeMinutes &&
+                total < startMin + LATE_ARRIVAL_BUFFER.afterMinutes) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     function startDrawing() {
         const isGroupMode = drawMode === 'group';
 
@@ -1303,6 +1339,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (eligibleItems.length === 0) {
                     showToast('提示', '当前选择的学生中没有实际排名前10名的学生');
                     return;
+                }
+            }
+            // 到场缓冲：该生尚未进入教室的窗口内不进入候选池（无任何提示）
+            if (LATE_ARRIVAL_BUFFER.names.length > 0 && isWithinLateArrivalWindow(new Date())) {
+                const arrived = eligibleItems.filter(s => !LATE_ARRIVAL_BUFFER.names.includes(s.name));
+                // 兜底：仅当过滤后仍有候选人时才生效，避免空池导致抽取异常
+                if (arrived.length > 0) {
+                    eligibleItems = arrived;
                 }
             }
         }
