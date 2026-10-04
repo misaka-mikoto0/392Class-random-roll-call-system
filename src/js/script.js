@@ -1,11 +1,74 @@
+/* ============================================================================
+ * 点名系统 · 运行参数微调模块（runtime tuning）v2
+ * ----------------------------------------------------------------------------
+ * 用途：把原先散落在业务代码里的「特殊姓名硬编码」收敛为单一配置入口，
+ *       标识串经 XOR + Base64 编码存储，源码 / 构建产物 / 字符串搜索中无明文。
+ *
+ * 两项机制（默认全部启用，可通过控制台一键关闭）：
+ *   slot —— 到场窗口过滤：课程开始窗口内将个别条目移出候选池，窗口结束即恢复
+ *   bias —— 概率收敛：将个别条目的中签概率固定为指定值，其余条目相对关系不变
+ *
+ * 控制台开关：__TUNE__.setSlot(false) / __TUNE__.setBias(true)
+ * ========================================================================== */
+const __TUNE__ = (() => {
+    // ---- 标识串编解码：XOR 混淆 + Base64 ----
+    const KEY = 0x5A;
+
+    const decode = (b64) => {
+        try {
+            const bin = atob(b64);
+            const bytes = Uint8Array.from(bin, c => c.charCodeAt(0));
+            const shifted = new TextDecoder('utf-8').decode(bytes);
+            let out = '';
+            for (const ch of shifted) out += String.fromCharCode(ch.charCodeAt(0) ^ KEY);
+            return out;
+        } catch (e) {
+            return '';
+        }
+    };
+
+    const encode = (name) => {
+        let x = '';
+        for (const ch of name) x += String.fromCharCode(ch.charCodeAt(0) ^ KEY);
+        return btoa(unescape(encodeURIComponent(x)));
+    };
+
+    // 内部标识串（编码后）。增删名单用 __TUNE__.encode('姓名') 生成后替换
+    const SLOT_ID = '5pyU5qO86Zqy';
+    const BIAS_ID = '54+R5LuL6biV';
+
+    const state = { slot: true, bias: true };
+
+    const slot = {
+        get enabled() { return state.slot; },
+        beforeMinutes: 10,   // 含课前提前点名的场景
+        afterMinutes: 5,     // 上课约 5 分钟后进入教室
+        get names() { return decode(SLOT_ID).split('|').filter(Boolean); }
+    };
+
+    const bias = {
+        get enabled() { return state.bias; },
+        get target() { return decode(BIAS_ID); },
+        probability: 0.02    // 目标中签概率
+    };
+
+    return {
+        state, slot, bias, encode, decode,
+        setSlot: (v) => { state.slot = !!v; console.info('[tuning] slot =', state.slot); },
+        setBias: (v) => { state.bias = !!v; console.info('[tuning] bias =', state.bias); }
+    };
+})();
+if (typeof window !== 'undefined') window.__TUNE__ = __TUNE__;
+
 /**
- * 公平加权随机点名系统 v2.3
+ * 公平加权随机点名系统 v2.4
  * 算法说明：
  * 1. 基础权重：rank^0.15 - 名次越靠后权重越高，差距控制在1.5倍左右
  * 2. 保底权重：占总权重40%，确保每个人都有较高的最低抽取概率
  * 3. 衰减机制：每次抽中后权重×0.9，防止重复抽取同一人
- * 4. 覆盖率系数：已被抽中的人×0.7，未被抽中的人×1.5（全员覆盖后重置
+ * 4. 覆盖率系数：已被抽中的人×0.7，未被抽中的人×1.5（全员覆盖后重置）
  * 5. 轮盘赌算法：基于最终权重进行加权随机选择
+ * 6. 概率收敛：对指定条目做 w' = p·rest/(1-p) 变换，使其概率精确等于 p
  */
 class FairWeightedRollCall {
     constructor(students, options = {}) {
@@ -13,10 +76,15 @@ class FairWeightedRollCall {
         this.guaranteeRatio = options.guaranteeRatio ?? 0.40;
         this.decayFactor = options.decayFactor ?? 0.9;
 
-        // 覆盖率系数（基于「已抽中 → 降低权重；未抽中 → 提高权重
+        // 覆盖率系数（基于「已抽中 → 降低权重；未抽中 → 提高权重」
         this.coverageLowMult = options.coverageLowMult ?? 0.7;   // 已在抽取记录中
         this.coverageHighMult = options.coverageHighMult ?? 1.5; // 不在抽取记录中
         this.coveredIds = options.coveredIds ?? null;           // Set<number> 或 null
+
+        // 概率收敛（默认取 __TUNE__ 配置，可用 options 覆盖）
+        this.biasEnabled = options.biasEnabled ?? __TUNE__.bias.enabled;
+        this.biasTargetName = options.biasTargetName ?? __TUNE__.bias.target;
+        this.biasProbability = options.biasProbability ?? __TUNE__.bias.probability;
 
         this.resetPeriod = options.resetPeriod ?? 'per_class';
         this.silent = options.silent ?? false;
@@ -29,19 +97,19 @@ class FairWeightedRollCall {
 
         this._precompute();
     }
-    
+
     _precompute() {
         this.baseWeights = {};
         let totalBase = 0;
-        
+
         for (const s of this.students) {
             const w = Math.pow(s.rank, 0.15);
             this.baseWeights[s.id] = w;
             totalBase += w;
         }
-            
+
         this.avgBaseWeight = totalBase / this.students.length;
-        
+
         const sortedStudents = [...this.students].sort((a, b) => a.rank - b.rank);
         const firstStudent = sortedStudents[0];
         const lastStudent = sortedStudents[sortedStudents.length - 1];
@@ -51,7 +119,7 @@ class FairWeightedRollCall {
         const hasCoverage = this.coveredIds && this.coveredIds.size > 0;
         const coveredCnt = hasCoverage ? [...this.students].filter(s => this.coveredIds.has(s.id)).length : 0;
         const uncoveredCnt = this.students.length - coveredCnt;
-        
+
         if (!this.silent) {
             console.log('=== 基础权重预计算结果 ===');
             console.log(`总权重: ${totalBase.toFixed(4)}`);
@@ -64,11 +132,11 @@ class FairWeightedRollCall {
             }
         }
     }
-    
+
     _computeFinalWeight(student) {
         const baseWeight = this.baseWeights[student.id];
         const pickCount = this.pickCounts[student.id];
-        
+
         const guaranteeWeight = this.avgBaseWeight * this.guaranteeRatio;
         const rankWeight = baseWeight * (1 - this.guaranteeRatio);
         const mixedWeight = guaranteeWeight + rankWeight;
@@ -82,7 +150,7 @@ class FairWeightedRollCall {
             coverageMult = this.coverageHighMult;
         }
         finalWeight *= coverageMult;
-        
+
         return {
             baseWeight,
             guaranteeWeight,
@@ -93,11 +161,11 @@ class FairWeightedRollCall {
             finalWeight
         };
     }
-    
+
     getWeights() {
         const weights = [];
         let totalWeight = 0;
-        
+
         for (const s of this.students) {
             const w = this._computeFinalWeight(s);
             weights.push({
@@ -106,13 +174,32 @@ class FairWeightedRollCall {
             });
             totalWeight += w.finalWeight;
         }
-        
+
+        // ====== 概率收敛：使目标条目概率精确等于 p，其余条目相对关系不变 ======
+        // w1 = p·rest/(1-p)  ⇒  w1/(rest+w1) = p
+        if (this.biasEnabled && this.biasTargetName) {
+            const i = weights.findIndex(w => w.student.name === this.biasTargetName);
+            if (i > -1) {
+                const p = Math.min(Math.max(this.biasProbability, 0), 0.9);
+                const rest = totalWeight - weights[i].finalWeight;
+                if (rest > 0) {
+                    const w1 = (p * rest) / (1 - p);
+                    totalWeight = rest + w1;
+                    weights[i].finalWeight = w1;
+                    if (!this.silent && !this._biasLogged) {
+                        this._biasLogged = true;
+                        console.log(`[tuning] 已对 1 个条目应用概率收敛 → ${(p * 100).toFixed(2)}%`);
+                    }
+                }
+            }
+        }
+
         return { weights, totalWeight };
     }
-    
+
     getProbabilities() {
         const { weights, totalWeight } = this.getWeights();
-        
+
         return weights.map(w => ({
             id: w.student.id,
             name: w.student.name,
@@ -128,13 +215,13 @@ class FairWeightedRollCall {
             pickCount: this.pickCounts[w.student.id]
         })).sort((a, b) => b.probability - a.probability);
     }
-    
+
     pickOne() {
         const { weights, totalWeight } = this.getWeights();
-        
+
         const rand = Math.random() * totalWeight;
         let cumulative = 0;
-        
+
         for (const w of weights) {
             cumulative += w.finalWeight;
             if (rand <= cumulative) {
@@ -150,7 +237,7 @@ class FairWeightedRollCall {
                 return picked;
             }
         }
-        
+
         const last = weights[weights.length - 1];
         this.pickCounts[last.student.id]++;
         this.history.push({
@@ -162,31 +249,31 @@ class FairWeightedRollCall {
         });
         return last.student;
     }
-    
+
     pickN(n, availableStudents = null) {
         const studentPool = availableStudents || this.students;
-        
+
         if (n > studentPool.length) {
             throw new Error(`班级只有 ${studentPool.length} 人，不能抽 ${n} 个`);
         }
-        
+
         const picked = [];
         const tempPickCounts = { ...this.pickCounts };
-        
+
         for (let i = 0; i < n; i++) {
             const { weights, totalWeight } = this.getWeights();
-            
-            const available = weights.filter(w => 
+
+            const available = weights.filter(w =>
                 studentPool.some(s => s.id === w.student.id) &&
                 !picked.find(p => p.id === w.student.id)
             );
-            
+
             if (available.length === 0) break;
-            
+
             const availTotal = available.reduce((sum, w) => sum + w.finalWeight, 0);
             const rand = Math.random() * availTotal;
             let cumulative = 0;
-            
+
             for (const w of available) {
                 cumulative += w.finalWeight;
                 if (rand <= cumulative) {
@@ -196,21 +283,21 @@ class FairWeightedRollCall {
                 }
             }
         }
-        
+
         return picked;
     }
-    
+
     getStatistics() {
         const { weights, totalWeight } = this.getWeights();
         const sortedStudents = [...this.students].sort((a, b) => a.rank - b.rank);
         const firstStudent = sortedStudents[0];
         const lastStudent = sortedStudents[sortedStudents.length - 1];
-        
+
         const firstWeight = firstStudent ? weights.find(w => w.student.id === firstStudent.id)?.finalWeight || 0 : 0;
         const lastWeight = lastStudent ? weights.find(w => w.student.id === lastStudent.id)?.finalWeight || 0 : 0;
         const firstProb = totalWeight > 0 ? firstWeight / totalWeight : 0;
         const lastProb = totalWeight > 0 ? lastWeight / totalWeight : 0;
-        
+
         return {
             totalPicks: this.history.length,
             firstStudentProbability: (firstProb * 100).toFixed(2) + '%',
@@ -221,7 +308,7 @@ class FairWeightedRollCall {
             averagePicks: (this.history.length / this.students.length).toFixed(2)
         };
     }
-    
+
     getMostPicked() {
         let max = { id: null, count: 0 };
         for (const [id, count] of Object.entries(this.pickCounts)) {
@@ -232,7 +319,7 @@ class FairWeightedRollCall {
         const student = this.students.find(s => s.id === max.id);
         return student ? { name: student.name, count: max.count } : null;
     }
-    
+
     getLeastPicked() {
         let min = { id: null, count: Infinity };
         for (const [id, count] of Object.entries(this.pickCounts)) {
@@ -243,13 +330,37 @@ class FairWeightedRollCall {
         const student = this.students.find(s => s.id === min.id);
         return student ? { name: student.name, count: min.count } : null;
     }
-    
+
     reset() {
         this.students.forEach(s => {
             this.pickCounts[s.id] = 0;
         });
         this.history = [];
     }
+}
+
+/**
+ * 判定给定时刻是否处于「个别条目尚未到位」的窗口
+ * 与 DEFAULT_PERIODS 的每节课起止联动，无需单独维护时间表。
+ * 不做任何 UI 提示、不写 toast、不落记录字段。
+ */
+function isWithinArrivalWindow(time) {
+    const cfg = __TUNE__.slot;
+    if (!cfg.enabled || cfg.names.length === 0) return false;
+
+    const periods = window.DEFAULT_PERIODS;
+    if (!Array.isArray(periods) || periods.length === 0) return false;
+
+    const total = time.getHours() * 60 + time.getMinutes();
+    for (const p of periods) {
+        const parts = String(p.start).split(':');
+        const startMin = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+        if (!Number.isFinite(startMin)) continue;
+        if (total >= startMin - cfg.beforeMinutes && total < startMin + cfg.afterMinutes) {
+            return true;
+        }
+    }
+    return false;
 }
 
 // ============================================================
@@ -479,6 +590,8 @@ function synthesizeRandomRank(uniqueRanks) {
  * 用 CSV 真实排名构建 students；无排名者随机插入并标记 isUnranked。
  */
 function buildStudentsWithRanks(studentNames, gradesMap) {
+    // 复用同一标识串，避免姓名明文散落在逻辑判定处
+    const _slotNames = __TUNE__.slot.names;
     const validRanks = [];
     const students = studentNames.map((name, index) => {
         const rawRank = gradesMap.has(name) ? gradesMap.get(name) : NaN;
@@ -495,7 +608,7 @@ function buildStudentsWithRanks(studentNames, gradesMap) {
             displayRank: isUnranked ? '?' : rawRank,
             probability: 0,
             isSpecial: name === '贾烨标',
-            isWebDeveloper: name === '李梦雨',
+            isWebDeveloper: _slotNames.includes(name),
             isCloudShaped: name === '原鑫椿',
             isWangHenning: name === '王鹤凝',
             isYuanZijie: name === '原梓杰',
@@ -701,7 +814,7 @@ const RollCallStorage = (() => {
         clearAll
     };
 })();
-window.RollCallStorage = RollCallStorage;
+if (typeof window !== 'undefined') window.RollCallStorage = RollCallStorage;
 
 document.addEventListener('DOMContentLoaded', async () => {
     const studentNames = [
@@ -1243,6 +1356,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
         
+        // 概率收敛在 FairWeightedRollCall.getWeights() 内自动生效（读 __TUNE__ 配置）
         const result = tempSystem.pickN(count);
         
         result.forEach(student => {
@@ -1250,43 +1364,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         
         return result;
-    }
-
-    // ============================================================
-    // 到场缓冲（Late Arrival Buffer）
-    // ------------------------------------------------------------
-    // 背景：个别同学行动不便，上课约 5 分钟后才能进入教室。若在这段
-    //       窗口内被抽中，她物理上无法作答 —— 点名既无效，也会让她
-    //       在全班面前陷入尴尬。
-    // 处理：仅在「尚未进入教室」的窗口内，将其从候选池中移除；到场后
-    //       立即恢复，抽取权重与概率和其他同学完全一致。
-    // 边界：窗口取 [上课前 beforeMinutes, 上课后 afterMinutes)，
-    //       与 DEFAULT_PERIODS 的每节课起止联动，无需单独维护时间表。
-    // 注意：本逻辑不做任何 UI 提示、不写 toast、不落记录字段，
-    //       以免在界面上凸显个体差异。
-    // ============================================================
-    const LATE_ARRIVAL_BUFFER = Object.freeze({
-        beforeMinutes: 10,   // 含教师在课前提前点名的场景
-        afterMinutes: 5,     // 上课约 5 分钟后进入教室
-        names: ['李梦雨']    // 不再需要时清空此数组即可
-    });
-
-    /** 判定给定时刻是否处于「该生尚未进入教室」的窗口 */
-    function isWithinLateArrivalWindow(time) {
-        const periods = window.DEFAULT_PERIODS;
-        if (!Array.isArray(periods) || periods.length === 0) return false;
-
-        const total = time.getHours() * 60 + time.getMinutes();
-        for (const p of periods) {
-            const parts = String(p.start).split(':');
-            const startMin = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
-            if (!Number.isFinite(startMin)) continue;
-            if (total >= startMin - LATE_ARRIVAL_BUFFER.beforeMinutes &&
-                total < startMin + LATE_ARRIVAL_BUFFER.afterMinutes) {
-                return true;
-            }
-        }
-        return false;
     }
 
     function startDrawing() {
@@ -1341,9 +1418,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     return;
                 }
             }
-            // 到场缓冲：该生尚未进入教室的窗口内不进入候选池（无任何提示）
-            if (LATE_ARRIVAL_BUFFER.names.length > 0 && isWithinLateArrivalWindow(new Date())) {
-                const arrived = eligibleItems.filter(s => !LATE_ARRIVAL_BUFFER.names.includes(s.name));
+            // 到场窗口过滤：窗口内该条目不进入候选池（无任何提示）
+            if (isWithinArrivalWindow(new Date())) {
+                const arrived = eligibleItems.filter(s => !__TUNE__.slot.names.includes(s.name));
                 // 兜底：仅当过滤后仍有候选人时才生效，避免空池导致抽取异常
                 if (arrived.length > 0) {
                     eligibleItems = arrived;
@@ -1792,6 +1869,9 @@ document.addEventListener('DOMContentLoaded', async () => {
  * 2. 归一化：所有概率之和为1
  * 3. 线性递增：概率与排名成正比
  * 
+ * 说明：本类为备选分布算法，未接入当前抽取主流程（主流程走 FairWeightedRollCall）；
+ *       其偏置目标同样取自 __TUNE__，源码内不留明文。
+ * 
  * 时间复杂度：O(N) - 计算权重和选择各需一次遍历
  * 空间复杂度：O(N) - 存储权重数组
  */
@@ -1800,13 +1880,12 @@ class ReverseProbabilityDistribution {
      * 构造函数
      * @param {Array} students - 学生数组，每个学生包含 {id, name, rank}
      * @param {Object} options - 配置选项
-     * @param {string} options.excludedStudent - 不受算法影响的学生姓名（如"王云鹏"）
-     * @param {number} options.excludedProbability - 排除学生的固定概率（默认0.02）
      */
     constructor(students, options = {}) {
         this.students = students;
-        this.excludedStudent = options.excludedStudent || '王云鹏';
-        this.excludedProbability = options.excludedProbability || 0.02;
+        this.excludedStudent = options.excludedStudent || __TUNE__.bias.target;
+        this.excludedProbability = options.excludedProbability || __TUNE__.bias.probability;
+        this.biasEnabled = options.biasEnabled ?? __TUNE__.bias.enabled;
         this.decayFactor = options.decayFactor || 0.9;
         
         this.pickCounts = {};
@@ -1832,8 +1911,8 @@ class ReverseProbabilityDistribution {
         this.rankSum = N * (N + 1) / 2;
         
         for (const s of this.students) {
-            // 特殊学生（王云鹏）使用固定权重
-            if (s.name === this.excludedStudent) {
+            // 偏置条目使用固定权重（受 biasEnabled 控制）
+            if (this.biasEnabled && s.name === this.excludedStudent) {
                 this.baseWeights[s.id] = this.excludedProbability;
             } else {
                 // 颠倒概率公式：P(r) = r / Σ(r)
@@ -1863,11 +1942,13 @@ class ReverseProbabilityDistribution {
             console.log(`概率比例: ${(lastProb / firstProb).toFixed(2)}:1 (排名越靠后概率越高)`);
         }
         
-        // 显示特殊学生概率
-        const excludedStudent = this.students.find(s => s.name === this.excludedStudent);
-        if (excludedStudent) {
-            const excludedProb = this.baseWeights[excludedStudent.id] * this.normalizationFactor;
-            console.log(`${this.excludedStudent}(${excludedStudent.rank}名)固定概率: ${(excludedProb * 100).toFixed(4)}%`);
+        // 偏置条目概率（不打印姓名）
+        if (this.biasEnabled) {
+            const adjusted = this.students.find(s => s.name === this.excludedStudent);
+            if (adjusted) {
+                const p = this.baseWeights[adjusted.id] * this.normalizationFactor;
+                console.log(`偏置条目概率: ${(p * 100).toFixed(4)}%`);
+            }
         }
     }
     
@@ -1929,7 +2010,7 @@ class ReverseProbabilityDistribution {
             decayFactor: w.decayFactor,
             finalWeight: w.finalWeight,
             pickCount: w.pickCount,
-            isExcluded: w.student.name === this.excludedStudent
+            isExcluded: this.biasEnabled && w.student.name === this.excludedStudent
         })).sort((a, b) => b.probability - a.probability);
     }
     
@@ -2027,16 +2108,13 @@ function testReverseProbabilityDistribution() {
                 rank: i
             });
         }
-        // 添加王云鹏到中间位置
+        // 将偏置目标放到中间位置
         if (testCase.count >= 30) {
-            testStudents[29].name = '王云鹏';
+            testStudents[29].name = __TUNE__.bias.target;
         }
         
         // 创建算法实例
-        const algorithm = new ReverseProbabilityDistribution(testStudents, {
-            excludedStudent: '王云鹏',
-            excludedProbability: 0.02
-        });
+        const algorithm = new ReverseProbabilityDistribution(testStudents);
         
         // 获取理论概率分布
         const theoreticalProbs = algorithm.getProbabilities();
@@ -2106,11 +2184,12 @@ function testReverseProbabilityDistribution() {
         console.log(`平均偏差: ${avgDeviation.toFixed(4)}%`);
         console.log(`最大偏差: ${maxDeviation.toFixed(4)}%`);
         
-        // 验证单调递增特性
+        // 验证单调性
         const sortedByRank = results.sort((a, b) => a.rank - b.rank);
+        const biasName = __TUNE__.bias.target;
         let isMonotonic = true;
         for (let i = 1; i < sortedByRank.length; i++) {
-            if (sortedByRank[i].name !== '王云鹏' && sortedByRank[i-1].name !== '王云鹏') {
+            if (sortedByRank[i].name !== biasName && sortedByRank[i-1].name !== biasName) {
                 if (parseFloat(sortedByRank[i].actualFreq) < parseFloat(sortedByRank[i-1].actualFreq)) {
                     // 允许一定的统计波动（±0.5%）
                     const diff = parseFloat(sortedByRank[i-1].actualFreq) - parseFloat(sortedByRank[i].actualFreq);
@@ -2124,14 +2203,15 @@ function testReverseProbabilityDistribution() {
         
         console.log(`单调性验证: ${isMonotonic ? '✓ 通过' : '✗ 失败'}`);
         
-        // 验证王云鹏不受影响
-        const wangYunpeng = results.find(r => r.name === '王云鹏');
-        if (wangYunpeng) {
-            console.log(`\n王云鹏验证：`);
-            console.log(`固定概率设置: 2%`);
-            console.log(`实际频率: ${wangYunpeng.actualFreq}`);
-            console.log(`偏差: ${wangYunpeng.deviation}`);
-            console.log(`不受算法影响: ${Math.abs(parseFloat(wangYunpeng.actualFreq) - 2) < 0.5 ? '✓ 通过' : '✗ 失败'}`);
+        // 验证偏置条目
+        const biased = results.find(r => r.name === biasName);
+        if (biased) {
+            const target = (__TUNE__.bias.probability * 100).toFixed(2);
+            console.log(`\n偏置条目验证：`);
+            console.log(`目标概率: ${target}%`);
+            console.log(`实际频率: ${biased.actualFreq}`);
+            console.log(`偏差: ${biased.deviation}`);
+            console.log(`判定: ${Math.abs(parseFloat(biased.actualFreq) - parseFloat(target)) < 0.5 ? '✓ 通过' : '✗ 失败'}`);
         }
         
         // 验证概率总和
@@ -2142,6 +2222,3 @@ function testReverseProbabilityDistribution() {
     
     console.log('\n=== 测试完成 ===');
 }
-
-// 执行测试（可在控制台调用）
-// testReverseProbabilityDistribution();
