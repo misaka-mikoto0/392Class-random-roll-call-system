@@ -46,13 +46,15 @@ const DEFAULT_PERIODS = Object.freeze([
  */
 const BUILD_META = Object.freeze({
     /** 语义化版本号：每次发版或功能有显著变化时递增 */
-    VERSION: '2.5.2',
+    VERSION: '2.5.3',
     /** 构建日期（YYYY-MM-DD）：与代码最后一次打包/发布日期保持一致 */
     BUILD_DATE: '2026-10-05',
     /** 简短变更摘要，用于控制台输出提示（不显示在 UI 上） */
     RELEASE_NOTES: [
-        'Font Awesome 改为多 CDN 兜底加载（jsDelivr / cdnjs / staticfile / bootcdn）',
-        'CDN 全被拦截时标记 fa-unavailable 并隐藏空图标，页面功能不受影响'
+        '新增 CDN 资源兜底加载器 cdn-fallback.js：主源 zstatic，失败自动切换备用 CDN',
+        '覆盖超时 / 错误状态码 / 网络异常 / 内容异常四类失败场景',
+        '新增本地兜底图标样式 fontawesome-local.css（离线可用，不含外部字体）',
+        'CDN 正常时零额外请求，成功源记忆到 localStorage 以跳过已知不可用源'
     ]
 });
 

@@ -7,57 +7,79 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎲</text></svg>">
     <title>392班 · 雅集点名</title>
     <link rel="stylesheet" href="src/css/styles.css">
-    <!-- Font Awesome：多 CDN 兜底，任一来源被客户端拦截时自动切换下一个 -->
-    <link rel="stylesheet" id="fa-css" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" crossorigin="anonymous">
+    <!-- 主 CDN 预热：仅在正常路径生效，失败时不会额外发请求 -->
+    <link rel="dns-prefetch" href="https://www.zstatic.net">
+    <link rel="preconnect" href="https://www.zstatic.net" crossorigin>
+
+    <!-- Font Awesome：主源 zstatic，失败时由 cdn-fallback.js 依次切换到备用 CDN / 本地兜底 -->
+    <link rel="stylesheet" id="fa-css"
+          href="https://www.zstatic.net/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+          crossorigin="anonymous">
+    <script src="src/js/cdn-fallback.js" defer></script>
     <script>
+        // 提前记录资源状态：若 load/error 早于加载器执行，也能立刻判定，无需等待超时
         (function () {
-            var FA_SOURCES = [
-                'https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css',
-                'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
-                'https://cdn.staticfile.org/font-awesome/6.4.0/css/all.min.css',
-                'https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css'
-            ];
-            var idx = 0;
-            var link = document.getElementById('fa-css');
-
-            // 探测 FA 样式是否真正生效（被拦截时 onerror 不一定触发，故用字体族校验）
-            function probe() {
-                var el = document.createElement('span');
-                el.className = 'fa-solid fa-house';
-                el.setAttribute('aria-hidden', 'true');
-                el.style.cssText = 'position:absolute;left:-9999px;top:0;font-size:32px;';
-                document.body.appendChild(el);
-                var fam = getComputedStyle(el).fontFamily || '';
-                var ok = fam.indexOf('Font Awesome') !== -1 && el.getBoundingClientRect().width > 8;
-                el.remove();
-                return ok;
-            }
-
-            function next() {
-                idx += 1;
-                if (idx >= FA_SOURCES.length) {
-                    document.documentElement.classList.add('fa-unavailable');
-                    console.warn('[FA] Font Awesome 所有 CDN 均不可用，已降级为无图标模式');
-                    return;
-                }
-                link.href = FA_SOURCES[idx];
-            }
-
-            function verify() {
-                var run = function () {
-                    if (!document.body) return;
-                    if (!probe()) next();
-                };
-                if (document.body) {
-                    setTimeout(run, 300);
-                } else {
-                    document.addEventListener('DOMContentLoaded', function () { setTimeout(run, 300); }, { once: true });
-                }
-            }
-
-            link.addEventListener('error', next);
-            link.addEventListener('load', verify);
+            var faEl = document.getElementById('fa-css');
+            faEl.addEventListener('load', function () { faEl.dataset.cdnState = 'loaded'; });
+            faEl.addEventListener('error', function () { faEl.dataset.cdnState = 'error'; });
         })();
+
+        // 兜底初始化：接管上面的 <link>，CDN 正常时零额外请求
+        window.addEventListener('DOMContentLoaded', function () {
+            var LOCAL_FA = 'src/assets/vendor/fontawesome-local.css';
+
+            // 校验 CDN 样式是否真正生效（HTTP 200 但返回错误页时也能识别）
+            function remoteFAOk() {
+                var readable = false;
+                try {
+                    var sheets = document.styleSheets;
+                    for (var i = 0; i < sheets.length; i++) {
+                        var rules = sheets[i].cssRules;
+                        if (!rules) continue;
+                        readable = true;
+                        for (var j = 0; j < rules.length && j < 3; j++) {
+                            if (rules[j].cssText && rules[j].cssText.indexOf('Font Awesome') !== -1) return true;
+                        }
+                    }
+                } catch (e) { /* 跨域样式表读取规则会抛错，属于「无法判定」 */ }
+                if (readable) return false; // 能读到规则但未发现 FA → 内容确有问题
+                try {
+                    if (document.fonts && document.fonts.check('900 1em "Font Awesome 6 Free"')) return true;
+                } catch (e) { /* 忽略 */ }
+                return true; // 无法判定时信任 load 事件，避免误切换
+            }
+
+            // 校验本地兜底样式是否生效（依据兜底样式里的标记变量）
+            function localFAOk() {
+                try {
+                    return getComputedStyle(document.documentElement)
+                        .getPropertyValue('--fa-local-fallback').trim() === '1';
+                } catch (e) { return false; }
+            }
+
+            window.CDNFallback.guard({
+                id: 'font-awesome',
+                type: 'css',
+                el: document.getElementById('fa-css'),
+                primary: 'https://www.zstatic.net/ajax/libs/font-awesome/6.4.0/css/all.min.css',
+                fallbacks: [
+                    'https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css',
+                    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
+                    'https://cdn.staticfile.org/font-awesome/6.4.0/css/all.min.css',
+                    'https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css'
+                ],
+                local: LOCAL_FA,
+                timeout: 5000,
+                failClass: 'fa-unavailable',
+                localClass: 'fa-local',
+                verify: function (url) {
+                    return url === LOCAL_FA ? localFAOk() : remoteFAOk();
+                },
+                onReady: function (url) {
+                    console.log('[cdn-fallback] Font Awesome 已就绪：' + url);
+                }
+            });
+        });
     </script>
 </head>
 <body>
