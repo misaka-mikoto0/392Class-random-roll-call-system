@@ -614,6 +614,7 @@ function buildStudentsWithRanks(studentNames, gradesMap) {
             isYuanZijie: name === '原梓杰',
             hasFnIcon: name === '成浩宇',
             hasYzyIcon: name === '延泽玉',
+            hasZcxIcon: name === '赵晨旭',
             isColorfulWhite: name === '李湣帅'
         };
     });
@@ -1056,6 +1057,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (student.hasYzyIcon) {
                 avatarIcon = `<img src="src/assets/yzy.png" class="yzy-mini-icon" alt="yzy">`;
             }
+            if (student.hasZcxIcon) {
+                avatarIcon = `<img src="src/assets/zcx.png" class="zcx-mini-icon" alt="zcx">`;
+            }
             
             let nameBadge = '';
             if (student.isWebDeveloper) {
@@ -1181,6 +1185,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (student.hasYzyIcon) {
                 innerHtml += '<img src="src/assets/yzy.png" class="yzy-icon" alt="yzy">';
             }
+            if (student.hasZcxIcon) {
+                innerHtml += '<img src="src/assets/zcx.png" class="zcx-icon" alt="zcx">';
+            }
             innerHtml += '</span>';
             
             if (student.isWangHenning) {
@@ -1240,6 +1247,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
                 if (member.hasYzyIcon) {
                     nameContent += '<img src="src/assets/yzy.png" class="yzy-mini-icon" alt="yzy">';
+                }
+                if (member.hasZcxIcon) {
+                    nameContent += '<img src="src/assets/zcx.png" class="zcx-mini-icon" alt="zcx">';
                 }
 
                 let badge = '';
