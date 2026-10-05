@@ -10,6 +10,18 @@
     font-display: swap;
 }
 
+/* Font Awesome 加载失败（被浏览器 / 广告拦截插件阻断）时的降级处理：
+   隐藏空图标元素，避免出现空格与空白方块，页面其余部分保持可用 */
+.fa-unavailable .fa,
+.fa-unavailable .fas,
+.fa-unavailable .far,
+.fa-unavailable .fab,
+.fa-unavailable .fa-solid,
+.fa-unavailable .fa-regular,
+.fa-unavailable .fa-brands {
+    display: none !important;
+}
+
 /* 全局变量定义 */
 :root {
     /* 主题�?- 腾讯风格 */

@@ -46,13 +46,13 @@ const DEFAULT_PERIODS = Object.freeze([
  */
 const BUILD_META = Object.freeze({
     /** 语义化版本号：每次发版或功能有显著变化时递增 */
-    VERSION: '2.5.1',
+    VERSION: '2.5.2',
     /** 构建日期（YYYY-MM-DD）：与代码最后一次打包/发布日期保持一致 */
     BUILD_DATE: '2026-10-05',
     /** 简短变更摘要，用于控制台输出提示（不显示在 UI 上） */
     RELEASE_NOTES: [
-        '赵晨旭卡片新增专属图标（缩放版 zcx.png）',
-        '同步更新构建元信息'
+        'Font Awesome 改为多 CDN 兜底加载（jsDelivr / cdnjs / staticfile / bootcdn）',
+        'CDN 全被拦截时标记 fa-unavailable 并隐藏空图标，页面功能不受影响'
     ]
 });
 

@@ -192,11 +192,23 @@
         document.head.appendChild(style);
 
         // 顺便引入 FontAwesome（页面已经引入，但 file:// 模式下可能未生效，做兜底）
+        // 与原站点保持一致：多 CDN 兜底，被拦截时自动切换下一个源
         if (!document.querySelector('link[href*="font-awesome"]')) {
+            const FA_SOURCES = [
+                'https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css',
+                'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
+                'https://cdn.staticfile.org/font-awesome/6.4.0/css/all.min.css',
+                'https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css'
+            ];
             const fa = document.createElement('link');
             fa.rel = 'stylesheet';
-            fa.href = 'https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css';
             fa.crossOrigin = 'anonymous';
+            let faIdx = 0;
+            fa.href = FA_SOURCES[faIdx];
+            fa.addEventListener('error', () => {
+                faIdx += 1;
+                if (faIdx < FA_SOURCES.length) fa.href = FA_SOURCES[faIdx];
+            });
             document.head.appendChild(fa);
         }
     }
