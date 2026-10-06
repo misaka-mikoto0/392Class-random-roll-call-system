@@ -26,7 +26,7 @@
 
         // 兜底初始化：接管上面的 <link>，CDN 正常时零额外请求
         window.addEventListener('DOMContentLoaded', function () {
-            var LOCAL_FA = 'src/assets/vendor/fontawesome-local.css';
+            var LOCAL_ICONS = 'src/assets/vendor/yesicon/icons.css';
 
             // 校验 CDN 样式是否真正生效（HTTP 200 但返回错误页时也能识别）
             function remoteFAOk() {
@@ -60,18 +60,20 @@
                     'https://cdn.staticfile.org/font-awesome/6.4.0/css/all.min.css',
                     'https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css'
                 ],
-                local: LOCAL_FA,
+                local: LOCAL_ICONS,
                 timeout: 3500,
-                // 注：styles.css 内置了图标基线字形，任何情况下图标都不会空白，
-                //     这里的类名仅用于排查（控制台查看 <html class>），不再隐藏图标
+                // CDN 全不可用 → 加载本地 YesIcon 图标（内嵌 data URI，无 emoji、零外部请求）
                 failClass: 'fa-unavailable',
-                localClass: 'fa-local',
+                localClass: 'icons-fallback',
                 verify: function (url) {
-                    // 本地资源只要 load 事件触发即视为可用（基线样式已保证可见）
-                    return url === LOCAL_FA ? true : remoteFAOk();
+                    if (url !== LOCAL_ICONS) return remoteFAOk();
+                    try {
+                        return getComputedStyle(document.documentElement)
+                            .getPropertyValue('--yesicon-icons').trim() === '1';
+                    } catch (e) { return true; }
                 },
                 onReady: function (url) {
-                    console.log('[cdn-fallback] Font Awesome 已就绪：' + url);
+                    console.log('[cdn-fallback] 图标资源已就绪：' + url);
                 }
             });
         });

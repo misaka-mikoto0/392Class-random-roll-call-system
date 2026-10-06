@@ -46,14 +46,14 @@ const DEFAULT_PERIODS = Object.freeze([
  */
 const BUILD_META = Object.freeze({
     /** 语义化版本号：每次发版或功能有显著变化时递增 */
-    VERSION: '2.5.4',
+    VERSION: '2.5.5',
     /** 构建日期（YYYY-MM-DD）：与代码最后一次打包/发布日期保持一致 */
     BUILD_DATE: '2026-10-06',
     /** 简短变更摘要，用于控制台输出提示（不显示在 UI 上） */
     RELEASE_NOTES: [
-        '修复图标不显示：styles.css 内置图标基线字形，零网络依赖，任何情况下图标可见',
-        '移除 fa-unavailable 隐藏图标的规则，CDN 全挂时不再出现空白按钮',
-        'CDN 兜底切换到备用源超时缩短为 3.5s'
+        '本地兜底图标替换为 YesIcon（Iconify · Lucide），移除 emoji 字形',
+        '兜底图标以 data URI 内嵌为单文件 icons.css（55KB），零外部请求',
+        '图标使用 mask + currentColor，颜色自动跟随文字颜色'
     ]
 });
 
