@@ -3206,3 +3206,458 @@ input:focus-visible,
         scroll-behavior: auto !important;
     }
 }
+
+/* ============================
+   UI Polish Layer v2
+   可读性 · 响应式 · 交互一致性 · 渲染性能
+   ------------------------------------------------------------
+   同样遵循「仅追加」约定：不改动既有布局结构与类名，不影响业务逻辑。
+   ============================ */
+
+/* ---------- 0. 设计令牌微调 ---------- */
+:root {
+    /* 次级/三级文字加深到 WCAG AA 对比度（原 #86909C 仅约 3.3:1） */
+    --tx-text-secondary: #5F6874;
+    --tx-text-tertiary: #8A9099;
+
+    /* 动效令牌：统一由 GPU 友好属性驱动 */
+    --tx-ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+    --tx-transition-gpu: transform 0.28s var(--tx-ease-out),
+                         box-shadow 0.28s var(--tx-ease-out),
+                         background-color 0.24s var(--tx-ease-out),
+                         border-color 0.24s var(--tx-ease-out),
+                         color 0.24s var(--tx-ease-out),
+                         opacity 0.24s var(--tx-ease-out);
+}
+
+/* ---------- 1. 基础与排版 ---------- */
+html {
+    -webkit-text-size-adjust: 100%;   /* 横屏/旋转时禁止字号自动放大 */
+    scrollbar-gutter: stable;         /* 弹窗锁定滚动时不产生横向位移 */
+}
+
+body {
+    min-height: 100vh;
+    min-height: 100dvh;               /* 移动端工具栏收缩时页面高度不跳动 */
+}
+
+.app-title,
+.app-subtitle,
+.card-title,
+.result-title,
+.modal-header h3 {
+    text-wrap: balance;
+    overflow-wrap: break-word;
+}
+
+.app-title {
+    font-size: clamp(26px, 3.6vw, var(--tx-font-size-4xl));
+    letter-spacing: 1px;
+}
+
+.app-subtitle {
+    letter-spacing: 2px;
+}
+
+.title-card {
+    padding: clamp(20px, 3vw, var(--tx-spacing-xl)) var(--tx-spacing-lg);
+}
+
+/* 标题卡片顶部高光带：收窄并弱化末端，层次更收敛 */
+.title-card::before {
+    height: 3px;
+    background: linear-gradient(90deg,
+        var(--tx-primary) 0%,
+        var(--tx-secondary) 55%,
+        rgba(20, 123, 255, 0.35) 100%);
+}
+
+/* ---------- 2. 栅格：补齐中间宽度、防止超长内容顶破 ---------- */
+@media (min-width: 1025px) {
+    .content-wrapper {
+        /* minmax(0, …) 避免长姓名/宽徽章撑破栅格导致整页横向滚动 */
+        grid-template-columns: minmax(0, 1.2fr) minmax(280px, 360px);
+    }
+
+    .left-column,
+    .sidebar {
+        min-width: 0;
+    }
+}
+
+@media (min-width: 1025px) and (max-width: 1360px) {
+    .content-wrapper {
+        grid-template-columns: minmax(0, 1fr) 300px;
+        gap: var(--tx-spacing-lg);
+    }
+}
+
+@media (max-width: 480px) {
+    .app-title {
+        font-size: var(--tx-font-size-2xl);
+    }
+
+    .app-container {
+        padding: var(--tx-spacing-md) var(--tx-spacing-sm);
+    }
+
+    /* 小屏保持 2×2 统计栅格：信息密度更高，页面长度减少约一屏 */
+    .stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: var(--tx-spacing-sm);
+    }
+
+    .stat-card {
+        padding: var(--tx-spacing-sm) var(--tx-spacing-xs);
+    }
+
+    .stat-value {
+        font-size: var(--tx-font-size-2xl);
+    }
+}
+
+/* ---------- 3. 抽取结果区：长姓名不再溢出 ---------- */
+.result-display {
+    padding-block: clamp(16px, 3vw, var(--tx-spacing-xl));
+}
+
+.result-names {
+    gap: clamp(12px, 2.4vw, var(--tx-spacing-xl));
+}
+
+.result-badge {
+    min-width: min(320px, 100%);
+    max-width: 100%;
+}
+
+.result-badge.cloud-shaped,
+.result-badge.wang-henning,
+.result-badge.yuan-zijie,
+.result-badge.colorful-white,
+.result-badge.web-developer-result {
+    min-width: min(240px, 100%);
+    max-width: 100%;
+}
+
+/* 保留原有断点下的紧凑尺寸（追加规则会覆盖早前的媒体查询） */
+@media (max-width: 1024px) {
+    .result-badge {
+        min-width: min(240px, 100%);
+    }
+
+    /* 单列布局时子元素仍带 grid-column: 1 / 2，会额外生成隐式第二列，
+       导致 1024px 以下出现横向溢出（旧版靠 body 的 overflow-x 遮掩）。
+       这里交还给自动放置，两列真正上下堆叠。 */
+    .left-column,
+    .sidebar {
+        grid-column: auto;
+    }
+}
+
+@media (max-width: 768px) {
+    .result-badge,
+    .result-badge.cloud-shaped,
+    .result-badge.wang-henning,
+    .result-badge.yuan-zijie,
+    .result-badge.colorful-white,
+    .result-badge.web-developer-result {
+        min-width: min(200px, 100%);
+    }
+}
+
+@media (max-width: 480px) {
+    .result-badge,
+    .result-badge.cloud-shaped,
+    .result-badge.wang-henning,
+    .result-badge.yuan-zijie,
+    .result-badge.colorful-white,
+    .result-badge.web-developer-result {
+        min-width: min(160px, 100%);
+    }
+}
+
+.badge-name {
+    overflow-wrap: anywhere;
+    line-height: 1.25;
+}
+
+.result-title {
+    margin-bottom: var(--tx-spacing-lg);
+}
+
+/* ---------- 4. 空占位：修复从未生效的图标容器 ----------
+   DOM/Js 中并不存在 .placeholder-icon，原规则一直未命中，
+   导致抽取区首屏只有一个裸图标，与主视觉不一致。 */
+.placeholder-text {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--tx-spacing-xs);
+    padding-inline: var(--tx-spacing-md);
+}
+
+.placeholder-text > i:not(.fa-spin) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 96px;
+    height: 96px;
+    margin: 0 auto var(--tx-spacing-lg);
+    border-radius: 50%;
+    font-size: 2.5rem;
+    line-height: 1;
+    color: var(--tx-primary);
+    background: radial-gradient(circle at 30% 30%,
+        rgba(255, 255, 255, 0.95) 0%,
+        rgba(232, 248, 239, 0.8) 55%,
+        rgba(232, 248, 239, 0.35) 100%);
+    box-shadow: 0 10px 28px rgba(7, 193, 96, 0.16),
+                inset 0 0 0 1px rgba(7, 193, 96, 0.14);
+    animation: float 3s ease-in-out infinite;
+}
+
+.placeholder-text > i.fa-spin {
+    font-size: 2rem;
+    color: var(--tx-primary);
+    margin-bottom: var(--tx-spacing-md);
+}
+
+.placeholder-text p:first-of-type {
+    font-size: clamp(16px, 2.2vw, var(--tx-font-size-xl));
+    font-weight: 600;
+    margin-bottom: var(--tx-spacing-xs);
+}
+
+.placeholder-text p:last-child {
+    font-size: var(--tx-font-size-sm);
+    font-weight: 400;
+    color: var(--tx-text-secondary);
+    margin-bottom: 0;
+}
+
+@media (max-width: 768px) {
+    .placeholder-text > i:not(.fa-spin) {
+        width: 76px;
+        height: 76px;
+        font-size: 2rem;
+    }
+}
+
+/* ---------- 5. 交互一致性：卡片悬浮统一为轻微上浮 ---------- */
+.genshin-quote:hover,
+.info-item:hover,
+.history-item:hover,
+.history-section .history-item:hover {
+    transform: translateY(-2px);
+}
+
+/* ---------- 6. 性能：收敛过渡属性，避免 transition: all 引发的重绘 ---------- */
+.title-card,
+.main-content,
+.sidebar-card,
+.stat-card,
+.info-item,
+.history-item,
+.student-card,
+.result-badge,
+.tx-btn,
+.control-btn,
+.mode-btn,
+.floating-btn,
+.switch-item,
+.group-result-card,
+.group-member-card {
+    transition: var(--tx-transition-gpu);
+}
+
+/* ---------- 7. 移动端：关闭固定背景，避免滚动掉帧 ---------- */
+@media (max-width: 900px), (pointer: coarse) {
+    body {
+        /* background.js 会内联 background-attachment: fixed，
+           此处用 !important 覆盖内联声明以消除移动端重绘开销 */
+        background-attachment: scroll !important;
+    }
+}
+
+/* ---------- 8. 安全区适配（刘海屏 / 手势条）---------- */
+.app-container {
+    padding-bottom: calc(var(--tx-spacing-2xl) + env(safe-area-inset-bottom, 0px));
+}
+
+.floating-controls {
+    bottom: calc(var(--tx-spacing-xl) + env(safe-area-inset-bottom, 0px));
+    right: calc(var(--tx-spacing-xl) + env(safe-area-inset-right, 0px));
+}
+
+.toast-container {
+    bottom: calc(40px + env(safe-area-inset-bottom, 0px));
+    max-width: 92vw;
+}
+
+/* ---------- 9. 触摸设备：去掉粘滞 hover，放大触控目标 ---------- */
+@media (hover: none) {
+    .title-card:hover,
+    .main-content:hover,
+    .genshin-quote:hover,
+    .sidebar-card:hover,
+    .stat-card:hover,
+    .info-item:hover,
+    .history-item:hover,
+    .history-section .history-item:hover,
+    .student-card:hover,
+    .group-result-card:hover,
+    .group-member-card:hover,
+    .result-badge:hover,
+    .tx-btn:hover:not(:disabled),
+    .tx-btn-primary:hover:not(:disabled),
+    .tx-btn-secondary:hover:not(:disabled),
+    .tx-btn-outline:hover:not(:disabled),
+    .control-btn:hover,
+    .select-all-btn:hover,
+    .deselect-all-btn:hover,
+    .floating-btn:hover:not(:disabled) {
+        transform: none;
+    }
+}
+
+@media (pointer: coarse) {
+    button,
+    .tx-btn,
+    .student-card,
+    .result-badge {
+        -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
+    }
+
+    .mode-btn {
+        padding: 10px 16px;
+    }
+
+    .switch,
+    .switch .slider {
+        border-radius: 30px;
+    }
+
+    .switch {
+        width: 54px;
+        height: 30px;
+    }
+
+    .switch .slider:before {
+        width: 24px;
+        height: 24px;
+    }
+
+    .switch input:checked + .slider:before {
+        transform: translateX(24px);
+    }
+
+    .tx-btn,
+    .input-group {
+        min-height: 48px;
+    }
+}
+
+/* ---------- 10. 弹窗：移动端视口与安全区 ---------- */
+.student-modal-overlay {
+    padding: calc(var(--tx-spacing-md) + env(safe-area-inset-top, 0px))
+             var(--tx-spacing-md)
+             calc(var(--tx-spacing-md) + env(safe-area-inset-bottom, 0px));
+    overscroll-behavior: contain;
+}
+
+.student-modal {
+    max-height: 92vh;
+}
+
+@supports (height: 100dvh) {
+    .student-modal {
+        max-height: 92dvh;
+    }
+}
+
+.modal-body {
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 768px) {
+    .student-modal {
+        max-height: 100dvh;
+        border-radius: 0;
+    }
+
+    .modal-body {
+        padding: var(--tx-spacing-md);
+    }
+}
+
+/* ---------- 11. Toast：修正入场时的横向跳动 ----------
+   旧 keyframes 额外叠加了 translateX(-50%)，而 .toast-container 已做过居中，
+   动画结束回到无 transform 状态时会明显左跳一次。 */
+@keyframes toastIn {
+    from {
+        opacity: 0;
+        transform: translateY(24px) scale(0.96);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes toastOut {
+    from {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(-12px) scale(0.98);
+    }
+}
+
+.toast {
+    min-width: min(280px, 92vw);
+    max-width: min(420px, 92vw);
+    padding: var(--tx-spacing-md) var(--tx-spacing-lg);
+    text-align: center;
+}
+
+/* ---------- 12. 图标资源：补齐固有比例，消除加载抖动 ---------- */
+.yzy-icon,
+.yzy-mini-icon {
+    aspect-ratio: 3 / 2;
+}
+
+.zcx-icon,
+.zcx-mini-icon {
+    aspect-ratio: 96 / 83;
+}
+
+.result-icon {
+    aspect-ratio: 1 / 1;
+}
+
+/* ---------- 13. 细节：可读性 + 键盘焦点 ---------- */
+.card-title {
+    letter-spacing: 0.2px;
+}
+
+.quote-content {
+    text-wrap: pretty;
+    line-height: 1.9;
+}
+
+.stat-label {
+    letter-spacing: 0.6px;
+}
+
+.history-names {
+    overflow-wrap: anywhere;
+}
+
+.student-card:focus-visible {
+    outline: 2px solid var(--tx-secondary);
+    outline-offset: 2px;
+}

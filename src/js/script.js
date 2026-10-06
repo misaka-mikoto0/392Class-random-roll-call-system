@@ -898,6 +898,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     let drawMode = 'individual';
     let recentHistory = [];
     let randomSeed = Math.floor(Math.random() * 1000000000);
+    // 弹窗打开前的焦点元素，关闭时恢复
+    let modalReturnFocus = null;
     
     const quote = { content: '', author: '' };
 
@@ -915,6 +917,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         statTotalDraws: document.getElementById('stat-total-draws'),
         statCurrentDraw: document.getElementById('stat-current-draw'),
         participationPercentage: document.getElementById('participation-percentage'),
+        progressBar: document.getElementById('progress-bar'),
         progressFill: document.getElementById('progress-fill'),
         footerStats: document.getElementById('footer-stats'),
         modalOverlay: document.getElementById('modal-overlay'),
@@ -943,6 +946,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             Math.round((selectedStudents.length / students.length) * 100) : 0;
         DOM.participationPercentage.textContent = percentage + '%';
         DOM.progressFill.style.width = percentage + '%';
+        if (DOM.progressBar) {
+            DOM.progressBar.setAttribute('aria-valuenow', String(percentage));
+        }
         DOM.footerStats.textContent = `已抽取 ${totalDraws} 次 | 服务 ${students.length} 名学生`;
     }
 
@@ -1006,25 +1012,49 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function openModal() {
+        // 记录触发弹窗的元素，关闭后把焦点还回去（键盘/读屏用户不会丢失位置）
+        modalReturnFocus = document.activeElement;
         DOM.modalOverlay.style.display = 'flex';
         DOM.modalOverlay.setAttribute('aria-hidden', 'false');
         document.body.style.overflow = 'hidden';
         
         if (onlyTop10) {
             selectedStudents = students.filter(s => !s.isUnranked && s.rank <= 10);
-            updateSelectedCount();
         }
+
+        // 每次打开都刷新「已选择 x / y」与确认按钮文案，
+        // 否则首屏打开时仍显示 HTML 里的初始值 0 / 0（与实际勾选状态不一致）
+        updateSelectedCount();
         
         renderStudentCards();
+
+        // 等一帧再移动焦点，避免入场动画期间的滚动抖动
+        requestAnimationFrame(() => {
+            if (DOM.modalCloseBtn) {
+                DOM.modalCloseBtn.focus({ preventScroll: true });
+            }
+        });
     }
 
     function closeModal() {
         DOM.modalOverlay.style.display = 'none';
         DOM.modalOverlay.setAttribute('aria-hidden', 'true');
         document.body.style.overflow = '';
+
+        if (modalReturnFocus && document.body.contains(modalReturnFocus)) {
+            modalReturnFocus.focus({ preventScroll: true });
+        }
+        modalReturnFocus = null;
     }
 
     function renderStudentCards() {
+        // 勾选后会整块重建列表，这里记录当前聚焦的学生，重建后把焦点放回去
+        const activeEl = document.activeElement;
+        const focusedStudentId =
+            activeEl && activeEl.classList && activeEl.classList.contains('student-card')
+                ? activeEl.dataset.studentId
+                : null;
+
         if (students.length === 0) {
             DOM.modalBody.innerHTML = `
                 <div class="empty-state">
@@ -1052,13 +1082,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             let avatarIcon = '';
             if (student.hasFnIcon) {
-                avatarIcon = `<img src="src/assets/fn.webp" class="fn-mini-icon" alt="fn" width="24" height="24">`;
+                avatarIcon = `<img src="src/assets/fn.webp" class="fn-mini-icon" alt="fn" width="24" height="24" loading="lazy" decoding="async">`;
             }
             if (student.hasYzyIcon) {
-                avatarIcon = `<img src="src/assets/yzy.png" class="yzy-mini-icon" alt="yzy">`;
+                avatarIcon = `<img src="src/assets/yzy.png" class="yzy-mini-icon" alt="yzy" width="28" height="19" loading="lazy" decoding="async">`;
             }
             if (student.hasZcxIcon) {
-                avatarIcon = `<img src="src/assets/zcx.png" class="zcx-mini-icon" alt="zcx">`;
+                avatarIcon = `<img src="src/assets/zcx.png" class="zcx-mini-icon" alt="zcx" width="28" height="24" loading="lazy" decoding="async">`;
             }
             
             let nameBadge = '';
@@ -1124,17 +1154,43 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             });
         });
+
+        if (focusedStudentId) {
+            const refocusTarget = DOM.modalBody.querySelector(
+                '.student-card[data-student-id="' + focusedStudentId + '"]'
+            );
+            if (refocusTarget) {
+                refocusTarget.focus({ preventScroll: true });
+            }
+        }
+    }
+
+    /**
+     * 抽取动画每帧都会调用 renderResult()。这里做一个内容指纹去重：
+     * 结果未变化时直接返回，避免每帧重建 DOM（会重置 CSS 动画、触发重排与图片重解析）。
+     * @param {string|null} key 内容指纹，传 null 表示不可复用
+     */
+    let renderedResultKey = null;
+
+    function setResultHTML(html, key) {
+        DOM.resultDisplay.innerHTML = html;
+        renderedResultKey = key || null;
     }
 
     function renderResult(result) {
         if (!result || result.length === 0) {
-            DOM.resultDisplay.innerHTML = `
+            setResultHTML(`
                 <div class="placeholder-text">
                     <i class="fas fa-random"></i>
                     <p>点击下方按钮开始抽取</p>
                     <p>系统将公平随机选择学生</p>
                 </div>
-            `;
+            `, null);
+            return;
+        }
+
+        const resultKey = result.map(function (s) { return s.id; }).join(',');
+        if (renderedResultKey === resultKey) {
             return;
         }
 
@@ -1175,23 +1231,23 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             
             if (student.isWangHenning) {
-                innerHtml += '<img src="src/assets/dog.svg" class="result-icon result-icon-left" alt="dog">';
+                innerHtml += '<img src="src/assets/dog.svg" class="result-icon result-icon-left" alt="dog" width="48" height="48" decoding="async">';
             }
             
             innerHtml += `<span class="badge-name">${student.name}`;
             if (student.hasFnIcon) {
-                innerHtml += '<img src="src/assets/fn.webp" class="fn-icon" alt="fn" width="42" height="42">';
+                innerHtml += '<img src="src/assets/fn.webp" class="fn-icon" alt="fn" width="42" height="42" decoding="async">';
             }
             if (student.hasYzyIcon) {
-                innerHtml += '<img src="src/assets/yzy.png" class="yzy-icon" alt="yzy">';
+                innerHtml += '<img src="src/assets/yzy.png" class="yzy-icon" alt="yzy" width="50" height="33" decoding="async">';
             }
             if (student.hasZcxIcon) {
-                innerHtml += '<img src="src/assets/zcx.png" class="zcx-icon" alt="zcx">';
+                innerHtml += '<img src="src/assets/zcx.png" class="zcx-icon" alt="zcx" width="42" height="36" decoding="async">';
             }
             innerHtml += '</span>';
             
             if (student.isWangHenning) {
-                innerHtml += '<img src="src/assets/cat.svg" class="result-icon result-icon-right" alt="cat">';
+                innerHtml += '<img src="src/assets/cat.svg" class="result-icon result-icon-right" alt="cat" width="48" height="48" decoding="async">';
             }
             
             if (student.isWebDeveloper) {
@@ -1204,18 +1260,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         
         html += '</div></div>';
-        DOM.resultDisplay.innerHTML = html;
+        setResultHTML(html, resultKey);
     }
 
     function renderGroupResult(groupResults) {
         if (!groupResults || groupResults.length === 0) {
-            DOM.resultDisplay.innerHTML = `
+            setResultHTML(`
                 <div class="placeholder-text">
                     <i class="fas fa-random"></i>
                     <p>点击下方按钮开始抽取</p>
                     <p>系统将公平随机选择小组</p>
                 </div>
-            `;
+            `, null);
             return;
         }
 
@@ -1243,13 +1299,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 let nameContent = member.name;
                 if (member.hasFnIcon) {
-                    nameContent += '<img src="src/assets/fn.webp" class="fn-mini-icon" alt="fn" width="20" height="20">';
+                    nameContent += '<img src="src/assets/fn.webp" class="fn-mini-icon" alt="fn" width="20" height="20" loading="lazy" decoding="async">';
                 }
                 if (member.hasYzyIcon) {
-                    nameContent += '<img src="src/assets/yzy.png" class="yzy-mini-icon" alt="yzy">';
+                    nameContent += '<img src="src/assets/yzy.png" class="yzy-mini-icon" alt="yzy" width="28" height="19" loading="lazy" decoding="async">';
                 }
                 if (member.hasZcxIcon) {
-                    nameContent += '<img src="src/assets/zcx.png" class="zcx-mini-icon" alt="zcx">';
+                    nameContent += '<img src="src/assets/zcx.png" class="zcx-mini-icon" alt="zcx" width="28" height="24" loading="lazy" decoding="async">';
                 }
 
                 let badge = '';
@@ -1293,7 +1349,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         html += '</div>';
-        DOM.resultDisplay.innerHTML = html;
+        setResultHTML(html, null);
     }
 
     function renderHistory() {
@@ -1829,6 +1885,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         DOM.modalOverlay.addEventListener('click', (e) => {
             if (e.target === DOM.modalOverlay) {
+                closeModal();
+            }
+        });
+
+        // Esc 关闭学生选择弹窗
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && DOM.modalOverlay.style.display === 'flex') {
                 closeModal();
             }
         });
