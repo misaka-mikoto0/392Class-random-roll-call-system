@@ -46,14 +46,14 @@ const DEFAULT_PERIODS = Object.freeze([
  */
 const BUILD_META = Object.freeze({
     /** 语义化版本号：每次发版或功能有显著变化时递增 */
-    VERSION: '2.5.5',
+    VERSION: '2.5.6',
     /** 构建日期（YYYY-MM-DD）：与代码最后一次打包/发布日期保持一致 */
     BUILD_DATE: '2026-10-06',
     /** 简短变更摘要，用于控制台输出提示（不显示在 UI 上） */
     RELEASE_NOTES: [
-        '本地兜底图标替换为 YesIcon（Iconify · Lucide），移除 emoji 字形',
-        '兜底图标以 data URI 内嵌为单文件 icons.css（55KB），零外部请求',
-        '图标使用 mask + currentColor，颜色自动跟随文字颜色'
+        '修复图标兜底未触发：被拦截的 <link> 仍会生成空 CSSStyleSheet，原判定误认为加载成功',
+        '加载完成判定改为 load 事件标记 + 规则非空双重校验，并对已加载资源补做内容校验',
+        '实测验证：CDN 全阻断时正确切换到本地 YesIcon 图标'
     ]
 });
 

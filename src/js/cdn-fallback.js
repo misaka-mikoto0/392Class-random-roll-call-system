@@ -54,11 +54,19 @@
         return list;
     }
 
-    /** 资源是否已经在脚本执行前加载完成 */
+    /**
+     * 资源是否已经在脚本执行前加载完成
+     * 注意：被拦截 / 失败的 <link> 在部分浏览器里仍会生成空的 CSSStyleSheet，
+     *      因此不能只用 el.sheet 判断，必须结合 load 事件标记或「规则非空」。
+     */
     function alreadyLoaded(el, type) {
-        if (!el) return false;
-        if (type === 'js') return false;
-        return !!el.sheet; // 样式表已解析完成
+        if (!el || type === 'js') return false;
+        if (el.dataset && el.dataset.cdnState === 'loaded') return true;
+        try {
+            return !!(el.sheet && el.sheet.cssRules && el.sheet.cssRules.length > 0);
+        } catch (e) {
+            return false; // 读不到规则且无 load 标记：按未加载处理，交给后续重试
+        }
     }
 
     /**
@@ -177,6 +185,11 @@
 
         // 首源：若脚本执行前已加载完成则直接判定成功，不发任何额外请求
         if (alreadyLoaded(el, type)) {
+            if (typeof options.verify === 'function' && !options.verify(sources[0])) {
+                index = 0;
+                tryNext('内容校验未通过（疑似空样式表）: ' + sources[0]);
+                return;
+            }
             succeed(sources[0]);
             return;
         }

@@ -30,23 +30,21 @@
 
             // 校验 CDN 样式是否真正生效（HTTP 200 但返回错误页时也能识别）
             function remoteFAOk() {
-                var readable = false;
+                // 直接检查这张样式表：被拦截时会生成「空样式表」，必须识别出来
+                var el = document.getElementById('fa-css');
                 try {
-                    var sheets = document.styleSheets;
-                    for (var i = 0; i < sheets.length; i++) {
-                        var rules = sheets[i].cssRules;
-                        if (!rules) continue;
-                        readable = true;
+                    var rules = el && el.sheet && el.sheet.cssRules;
+                    if (rules) {
+                        if (!rules.length) return false; // 空样式表 → 实际未加载成功
                         for (var j = 0; j < rules.length && j < 3; j++) {
                             if (rules[j].cssText && rules[j].cssText.indexOf('Font Awesome') !== -1) return true;
                         }
+                        return false;
                     }
-                } catch (e) { /* 跨域样式表读取规则会抛错，属于「无法判定」 */ }
-                if (readable) return false; // 能读到规则但未发现 FA → 内容确有问题
+                } catch (e) { /* 跨域且未带 CORS 时读不到规则，走字体检测 */ }
                 try {
-                    if (document.fonts && document.fonts.check('900 1em "Font Awesome 6 Free"')) return true;
-                } catch (e) { /* 忽略 */ }
-                return true; // 无法判定时信任 load 事件，避免误切换
+                    return !!(document.fonts && document.fonts.check('900 1em "Font Awesome 6 Free"'));
+                } catch (e) { return false; }
             }
 
             window.CDNFallback.guard({
