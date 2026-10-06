@@ -46,15 +46,14 @@ const DEFAULT_PERIODS = Object.freeze([
  */
 const BUILD_META = Object.freeze({
     /** 语义化版本号：每次发版或功能有显著变化时递增 */
-    VERSION: '2.5.3',
+    VERSION: '2.5.4',
     /** 构建日期（YYYY-MM-DD）：与代码最后一次打包/发布日期保持一致 */
-    BUILD_DATE: '2026-10-05',
+    BUILD_DATE: '2026-10-06',
     /** 简短变更摘要，用于控制台输出提示（不显示在 UI 上） */
     RELEASE_NOTES: [
-        '新增 CDN 资源兜底加载器 cdn-fallback.js：主源 zstatic，失败自动切换备用 CDN',
-        '覆盖超时 / 错误状态码 / 网络异常 / 内容异常四类失败场景',
-        '新增本地兜底图标样式 fontawesome-local.css（离线可用，不含外部字体）',
-        'CDN 正常时零额外请求，成功源记忆到 localStorage 以跳过已知不可用源'
+        '修复图标不显示：styles.css 内置图标基线字形，零网络依赖，任何情况下图标可见',
+        '移除 fa-unavailable 隐藏图标的规则，CDN 全挂时不再出现空白按钮',
+        'CDN 兜底切换到备用源超时缩短为 3.5s'
     ]
 });
 

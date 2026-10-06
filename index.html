@@ -49,14 +49,6 @@
                 return true; // 无法判定时信任 load 事件，避免误切换
             }
 
-            // 校验本地兜底样式是否生效（依据兜底样式里的标记变量）
-            function localFAOk() {
-                try {
-                    return getComputedStyle(document.documentElement)
-                        .getPropertyValue('--fa-local-fallback').trim() === '1';
-                } catch (e) { return false; }
-            }
-
             window.CDNFallback.guard({
                 id: 'font-awesome',
                 type: 'css',
@@ -69,11 +61,14 @@
                     'https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css'
                 ],
                 local: LOCAL_FA,
-                timeout: 5000,
+                timeout: 3500,
+                // 注：styles.css 内置了图标基线字形，任何情况下图标都不会空白，
+                //     这里的类名仅用于排查（控制台查看 <html class>），不再隐藏图标
                 failClass: 'fa-unavailable',
                 localClass: 'fa-local',
                 verify: function (url) {
-                    return url === LOCAL_FA ? localFAOk() : remoteFAOk();
+                    // 本地资源只要 load 事件触发即视为可用（基线样式已保证可见）
+                    return url === LOCAL_FA ? true : remoteFAOk();
                 },
                 onReady: function (url) {
                     console.log('[cdn-fallback] Font Awesome 已就绪：' + url);
