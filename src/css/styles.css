@@ -2462,10 +2462,10 @@ body {
 }
 
 /* 通过 CSS 变量作为「构建时间校验点」：
-   如果页面用的是旧 CSS，这里 --build-sentinel 不会是 20260816，
+   如果页面用的是旧 CSS，这里 --build-sentinel 不会是 20261007，
    结合 JS 中的 BUILD_META 可以快速排查前端资源是否混版。*/
 .app-footer {
-    --build-sentinel: 20260816;
+    --build-sentinel: 20261007;
 }
 
 /* 空状�?*/
