@@ -7,8 +7,8 @@
     'use strict';
 
     const COLORS = [
-        '#FFD700', '#FF6B6B', '#FF9F43', '#07C160', '#147BFF',
-        '#C0392B', '#9B59B6', '#FFE66D', '#4ECDC4', '#FF6B35'
+        '#FFD700', '#FF6B6B', '#FF9F43', '#8B5CF6', '#14B8A6',
+        '#C0392B', '#9B59B6', '#FFE66D', '#4ECDC4', '#F59E0B'
     ];
     const SHAPES = ['rect', 'circle', 'ribbon'];
 

@@ -20,22 +20,22 @@
    ============================================================ */
 /* 全局变量定义 */
 :root {
-    /* 主题�?- 腾讯风格 */
-    --tx-primary: #07C160;
-    --tx-primary-dark: #06AD56;
-    --tx-primary-light: #E8F8EF;
-    --tx-secondary: #147BFF;
-    --tx-secondary-dark: #0D66E4;
-    --tx-accent: #FF6B35;
-    --tx-success: #07C160;
-    --tx-warning: #FF9F43;
-    --tx-error: #FF4757;
+    /* 主题色 - 紫霞·青碧 */
+    --tx-primary: #8B5CF6;
+    --tx-primary-dark: #7C3AED;
+    --tx-primary-light: #F3EFFE;
+    --tx-secondary: #14B8A6;
+    --tx-secondary-dark: #0D9488;
+    --tx-accent: #F59E0B;
+    --tx-success: #10B981;
+    --tx-warning: #F59E0B;
+    --tx-error: #F43F5E;
     
-    /* 背景�?*/
+    /* 背景色 */
     --tx-bg-primary: #FFFFFF;
-    --tx-bg-secondary: #F7F8FA;
-    --tx-bg-tertiary: #EDEFF2;
-    --tx-bg-hover: #F2F3F5;
+    --tx-bg-secondary: #F7F5FC;
+    --tx-bg-tertiary: #EDEAF5;
+    --tx-bg-hover: #F2EFF9;
     
     /* 文字颜色 */
     --tx-text-primary: #1D2129;
@@ -43,9 +43,9 @@
     --tx-text-tertiary: #C9CDD4;
     --tx-text-muted: #E5E6EB;
     
-    /* 边框�?*/
-    --tx-border: #E5E6EB;
-    --tx-border-light: #F2F3F5;
+    /* 边框色 */
+    --tx-border: #E4E1EF;
+    --tx-border-light: #F0EEF7;
     
     /* 阴影 */
     --tx-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
@@ -276,13 +276,13 @@ body {
     width: 120px;
     height: 120px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--tx-primary-light) 0%, #E8F8EF 100%);
+    background: linear-gradient(135deg, var(--tx-primary-light) 0%, #F3EFFE 100%);
     display: flex;
     align-items: center;
     justify-content: center;
     margin: 0 auto var(--tx-spacing-xl);
     animation: float 3s ease-in-out infinite;
-    box-shadow: 0 10px 40px rgba(7, 193, 96, 0.15);
+    box-shadow: 0 10px 40px rgba(139, 92, 246, 0.15);
 }
 
 .placeholder-icon i {
@@ -380,8 +380,8 @@ body {
     font-size: 42px;
     min-width: 320px; min-height: 140px;
     box-shadow: 
-        0 10px 40px rgba(7, 193, 96, 0.4),
-        0 0 60px rgba(7, 193, 96, 0.2),
+        0 10px 40px rgba(139, 92, 246, 0.4),
+        0 0 60px rgba(139, 92, 246, 0.2),
         inset 0 2px 10px rgba(255, 255, 255, 0.2);
     transition: var(--tx-transition);
     border: 4px solid rgba(255, 255, 255, 0.3);
@@ -483,8 +483,8 @@ body {
 .result-badge:hover {
     transform: scale(1.05) translateY(-4px);
     box-shadow: 
-        0 15px 50px rgba(7, 193, 96, 0.5),
-        0 0 80px rgba(7, 193, 96, 0.3);
+        0 15px 50px rgba(139, 92, 246, 0.5),
+        0 0 80px rgba(139, 92, 246, 0.3);
 }
 
 /* 金色徽章（前11名） */
@@ -505,28 +505,28 @@ body {
 .result-badge.blue {
     background: linear-gradient(135deg, var(--tx-secondary) 0%, var(--tx-secondary-dark) 100%);
     box-shadow: 
-        0 10px 40px rgba(20, 123, 255, 0.5),
-        0 0 60px rgba(20, 123, 255, 0.3);
+        0 10px 40px rgba(20, 184, 166, 0.5),
+        0 0 60px rgba(20, 184, 166, 0.3);
 }
 
 .result-badge.blue:hover {
     box-shadow: 
-        0 15px 50px rgba(20, 123, 255, 0.6),
-        0 0 80px rgba(20, 123, 255, 0.4);
+        0 15px 50px rgba(20, 184, 166, 0.6),
+        0 0 80px rgba(20, 184, 166, 0.4);
 }
 
 /* 绿色徽章（贾烨标�?*/
 .result-badge.special-green {
-    background: linear-gradient(135deg, var(--tx-success) 0%, var(--tx-primary-dark) 100%);
+    background: linear-gradient(135deg, var(--tx-success) 0%, #059669 100%);
     box-shadow: 
-        0 10px 40px rgba(7, 193, 96, 0.5),
-        0 0 60px rgba(7, 193, 96, 0.3);
+        0 10px 40px rgba(16, 185, 129, 0.5),
+        0 0 60px rgba(16, 185, 129, 0.3);
 }
 
 .result-badge.special-green:hover {
     box-shadow: 
-        0 15px 50px rgba(7, 193, 96, 0.6),
-        0 0 80px rgba(7, 193, 96, 0.4);
+        0 15px 50px rgba(16, 185, 129, 0.6),
+        0 0 80px rgba(16, 185, 129, 0.4);
 }
 
 /* 神秘徽章（未排名学生）- 克制的紫灰主题 */
@@ -947,23 +947,23 @@ body {
 .tx-btn-primary {
     background: linear-gradient(135deg, var(--tx-primary) 0%, var(--tx-primary-dark) 100%);
     color: #FFFFFF;
-    box-shadow: 0 4px 12px rgba(7, 193, 96, 0.25);
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.25);
 }
 
 .tx-btn-primary:hover:not(:disabled) {
     transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(7, 193, 96, 0.35);
+    box-shadow: 0 6px 16px rgba(139, 92, 246, 0.35);
 }
 
 .tx-btn-secondary {
     background: linear-gradient(135deg, var(--tx-secondary) 0%, var(--tx-secondary-dark) 100%);
     color: #FFFFFF;
-    box-shadow: 0 4px 12px rgba(20, 123, 255, 0.25);
+    box-shadow: 0 4px 12px rgba(20, 184, 166, 0.25);
 }
 
 .tx-btn-secondary:hover:not(:disabled) {
     transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(20, 123, 255, 0.35);
+    box-shadow: 0 6px 16px rgba(20, 184, 166, 0.35);
 }
 
 .tx-btn-outline {
@@ -999,7 +999,7 @@ body {
 .input-group:focus-within {
     border-color: var(--tx-primary);
     background: var(--tx-bg-primary);
-    box-shadow: 0 0 0 3px rgba(7, 193, 96, 0.1);
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
 }
 
 .input-group i {
@@ -1224,8 +1224,8 @@ body {
     font-size: var(--tx-font-size-lg);
     min-height: 90px;
     box-shadow:
-        0 6px 20px rgba(7, 193, 96, 0.3),
-        0 0 30px rgba(7, 193, 96, 0.15),
+        0 6px 20px rgba(139, 92, 246, 0.3),
+        0 0 30px rgba(139, 92, 246, 0.15),
         inset 0 1px 6px rgba(255, 255, 255, 0.2);
     transition: var(--tx-transition);
     border: 3px solid rgba(255, 255, 255, 0.3);
@@ -1248,8 +1248,8 @@ body {
 .group-member-card:hover {
     transform: scale(1.05) translateY(-2px);
     box-shadow:
-        0 10px 30px rgba(7, 193, 96, 0.4),
-        0 0 50px rgba(7, 193, 96, 0.25);
+        0 10px 30px rgba(139, 92, 246, 0.4),
+        0 0 50px rgba(139, 92, 246, 0.25);
 }
 
 .group-member-card .member-name {
@@ -1297,30 +1297,30 @@ body {
 .group-member-card.blue {
     background: linear-gradient(135deg, var(--tx-secondary) 0%, var(--tx-secondary-dark) 100%);
     box-shadow:
-        0 6px 20px rgba(20, 123, 255, 0.4),
-        0 0 30px rgba(20, 123, 255, 0.2);
+        0 6px 20px rgba(20, 184, 166, 0.4),
+        0 0 30px rgba(20, 184, 166, 0.2);
     border: 3px solid rgba(255, 255, 255, 0.4);
 }
 
 .group-member-card.blue:hover {
     box-shadow:
-        0 10px 30px rgba(20, 123, 255, 0.5),
-        0 0 50px rgba(20, 123, 255, 0.3);
+        0 10px 30px rgba(20, 184, 166, 0.5),
+        0 0 50px rgba(20, 184, 166, 0.3);
 }
 
 /* 贾烨标 - 绿色特殊 */
 .group-member-card.special-green {
-    background: linear-gradient(135deg, var(--tx-success) 0%, var(--tx-primary-dark) 100%);
+    background: linear-gradient(135deg, var(--tx-success) 0%, #059669 100%);
     box-shadow:
-        0 6px 20px rgba(7, 193, 96, 0.4),
-        0 0 30px rgba(7, 193, 96, 0.2);
+        0 6px 20px rgba(16, 185, 129, 0.4),
+        0 0 30px rgba(16, 185, 129, 0.2);
     border: 3px solid rgba(255, 255, 255, 0.4);
 }
 
 .group-member-card.special-green:hover {
     box-shadow:
-        0 10px 30px rgba(7, 193, 96, 0.5),
-        0 0 50px rgba(7, 193, 96, 0.3);
+        0 10px 30px rgba(16, 185, 129, 0.5),
+        0 0 50px rgba(16, 185, 129, 0.3);
 }
 
 /* 未排名学生 - 神秘紫灰主题 */
@@ -2004,7 +2004,7 @@ body {
 .student-card.selected {
     border-color: var(--tx-primary);
     background: var(--tx-primary-light);
-    box-shadow: 0 0 0 3px rgba(7, 193, 96, 0.1);
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
 }
 
 /* 未排名学生卡片（选择弹窗）- 虚线边框 + 淡紫底 */
@@ -2348,11 +2348,11 @@ body {
 }
 
 .music-btn {
-    background: linear-gradient(135deg, var(--tx-accent) 0%, #E55A2B 100%);
+    background: linear-gradient(135deg, var(--tx-accent) 0%, #D97706 100%);
 }
 
 .music-btn.active {
-    background: linear-gradient(135deg, var(--tx-success) 0%, var(--tx-primary-dark) 100%);
+    background: linear-gradient(135deg, var(--tx-success) 0%, #059669 100%);
     animation: pulse 2s infinite;
 }
 
@@ -2362,8 +2362,8 @@ body {
 }
 
 @keyframes pulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(7, 193, 96, 0.4); }
-    50% { box-shadow: 0 0 0 10px rgba(7, 193, 96, 0); }
+    0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+    50% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
 }
 
 .background-btn {
@@ -2465,7 +2465,7 @@ body {
    如果页面用的是旧 CSS，这里 --build-sentinel 不会是 20261007，
    结合 JS 中的 BUILD_META 可以快速排查前端资源是否混版。*/
 .app-footer {
-    --build-sentinel: 20261007;
+    --build-sentinel: 20261013;
 }
 
 /* 空状�?*/
@@ -2762,12 +2762,12 @@ body {
 
 /* 贾烨标特殊绿色卡片 */
 .student-card.special-green-card {
-    background: linear-gradient(135deg, rgba(7, 193, 96, 0.15) 0%, rgba(6, 173, 86, 0.08) 100%);
-    border-color: var(--tx-primary);
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.08) 100%);
+    border-color: var(--tx-success);
 }
 
 .student-card.special-green-card:hover {
-    background: linear-gradient(135deg, rgba(7, 193, 96, 0.25) 0%, rgba(6, 173, 86, 0.15) 100%);
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.25) 0%, rgba(5, 150, 105, 0.15) 100%);
 }
 
 /* 李梦雨Web Developer卡片 */
@@ -3163,15 +3163,15 @@ input:focus-visible,
 .sidebar-card {
     background-image: linear-gradient(180deg,
         rgba(255, 255, 255, 0.92) 0%,
-        rgba(247, 248, 250, 0.72) 100%);
+        rgba(243, 241, 250, 0.72) 100%);
     border-color: rgba(29, 33, 41, 0.06);
 }
 
 /* 6. Spotlight behind the draw area (background only, layout untouched). */
 .result-display {
     background: radial-gradient(circle at 50% 45%,
-        rgba(7, 193, 96, 0.07) 0%,
-        rgba(7, 193, 96, 0) 62%);
+        rgba(139, 92, 246, 0.07) 0%,
+        rgba(139, 92, 246, 0) 62%);
     border-radius: var(--tx-radius-lg);
 }
 
@@ -3269,7 +3269,7 @@ body {
     background: linear-gradient(90deg,
         var(--tx-primary) 0%,
         var(--tx-secondary) 55%,
-        rgba(20, 123, 255, 0.35) 100%);
+        rgba(20, 184, 166, 0.35) 100%);
 }
 
 /* ---------- 2. 栅格：补齐中间宽度、防止超长内容顶破 ---------- */
@@ -3409,10 +3409,10 @@ body {
     color: var(--tx-primary);
     background: radial-gradient(circle at 30% 30%,
         rgba(255, 255, 255, 0.95) 0%,
-        rgba(232, 248, 239, 0.8) 55%,
-        rgba(232, 248, 239, 0.35) 100%);
-    box-shadow: 0 10px 28px rgba(7, 193, 96, 0.16),
-                inset 0 0 0 1px rgba(7, 193, 96, 0.14);
+        rgba(243, 239, 254, 0.8) 55%,
+        rgba(243, 239, 254, 0.35) 100%);
+    box-shadow: 0 10px 28px rgba(139, 92, 246, 0.16),
+                inset 0 0 0 1px rgba(139, 92, 246, 0.14);
     animation: float 3s ease-in-out infinite;
 }
 

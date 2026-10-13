@@ -46,16 +46,14 @@ const DEFAULT_PERIODS = Object.freeze([
  */
 const BUILD_META = Object.freeze({
     /** 语义化版本号：每次发版或功能有显著变化时递增 */
-    VERSION: '2.6.0',
+    VERSION: '2.7.0',
     /** 构建日期（YYYY-MM-DD）：与代码最后一次打包/发布日期保持一致 */
-    BUILD_DATE: '2026-10-07',
+    BUILD_DATE: '2026-10-13',
     /** 简短变更摘要，用于控制台输出提示（不显示在 UI 上） */
     RELEASE_NOTES: [
-        '布局：修复 1024px 以下隐式第二列造成的横向溢出，补齐 1025~1360px 中间断点',
-        '视觉：次级/三级文字对比度提升至 WCAG AA，标题流式排版，卡片悬浮位移统一',
-        '修复：抽取区占位图标样式从未命中、Toast 入场横向跳动、弹窗选择计数恒显示 0/0',
-        '性能：底部脚本 defer、抽取结果渲染去重、图片尺寸/懒加载、移动端关闭 fixed 背景',
-        '交互：Esc 关闭弹窗与焦点返还、勾选后保持键盘焦点、触摸端放大触控目标'
+        '视觉：整体换肤「紫霞·青碧」主题——主色腾讯绿改为紫罗兰 #8B5CF6，辅色改为青碧 #14B8A6',
+        '视觉：全部 UI 组件同步刷新（按钮/徽章/卡片/弹窗/Toast/浮动按钮/进度条/开关/课表卡），类名与功能不变',
+        '视觉：彩带配色、theme-color、聚光灯背景、特殊绿色徽章（翡翠绿 #10B981）同步更新'
     ]
 });
 
@@ -928,11 +926,11 @@ class HistoryStore {
     console.log(
         '%c[ClassTimeGuard / HistoryStore] 已就绪。' +
         ' window.classTimeGuard.isInClassTime() / window.historyStore.query()',
-        'color:#07C160;font-weight:bold;'
+        'color:#8B5CF6;font-weight:bold;'
     );
     console.log(
         `%c[Build] v${BUILD_META.VERSION} · ${BUILD_META.BUILD_DATE}\n变更：\n  - ` +
         BUILD_META.RELEASE_NOTES.join('\n  - '),
-        'color:#147BFF;font-weight:bold;'
+        'color:#14B8A6;font-weight:bold;'
     );
 })();

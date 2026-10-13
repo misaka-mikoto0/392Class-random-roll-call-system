@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="color-scheme" content="light">
-    <meta name="theme-color" content="#07C160">
+    <meta name="theme-color" content="#8B5CF6">
     <meta name="description" content="392班 · 雅集点名 —— 基于 Fisher-Yates 洗牌算法的公平随机点名系统，支持自定义抽取范围与历史记录。">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎲</text></svg>">
     <title>392班 · 雅集点名</title>
     <!-- 静态资源无哈希，靠查询串做发版缓存失效；改版时与 BUILD_META 一起递增 -->
-    <link rel="stylesheet" href="src/css/styles.css?v=3">
+    <link rel="stylesheet" href="src/css/styles.css?v=4">
     <!-- 主 CDN 预热：仅在正常路径生效，失败时不会额外发请求 -->
     <link rel="dns-prefetch" href="https://www.zstatic.net">
     <link rel="preconnect" href="https://www.zstatic.net" crossorigin>
@@ -316,8 +316,8 @@
 
     <!-- 底部脚本统一 defer：保持原有执行顺序，同时不再阻塞 HTML 解析 -->
     <script src="src/js/background.js" defer></script>
-    <script src="src/js/confetti.js?v=2" defer></script>
+    <script src="src/js/confetti.js?v=3" defer></script>
     <script src="src/js/script.js?v=3" defer></script>
-    <script src="src/js/schedule.js?v=3" defer></script>
+    <script src="src/js/schedule.js?v=4" defer></script>
 </body>
 </html>
