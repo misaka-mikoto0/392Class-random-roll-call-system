@@ -3661,3 +3661,122 @@ body {
     outline: 2px solid var(--tx-secondary);
     outline-offset: 2px;
 }
+
+/* ============================
+   UI Fix Layer
+   ------------------------------------------------------------
+   1. 多人抽取时结果卡片尺寸不一
+   2. 「五彩斑斓的黑」卡片被彩虹底色覆盖，代码标/姓名看不清
+   遵循「仅追加」约定：不改动既有类名、DOM 结构与业务逻辑。
+   ============================ */
+
+/* ---------- 1. 同一批抽取结果的卡片尺寸统一 ----------
+   原因：各变体的占位尺寸与内边距都不一致（基础 320×140 / padding 24·64，
+   特殊变体被改成 240×120 / padding 32·48），同一批混合抽取时会出现
+   「大的大小的小」。做法：统一占位尺寸与内边距，宽度固定 320px，
+   同一行的高度由 flex 默认的 stretch 自动拉齐。
+   注意：.result-display 是 align-items:center 的列向 flex，容器若收缩到
+   内容宽度，卡片上的百分比宽度会形成循环依赖，故让容器先撑满整行。 */
+.result-display .result-names {
+    align-self: stretch;
+}
+
+.result-names .result-badge,
+.result-names .result-badge.cloud-shaped,
+.result-names .result-badge.wang-henning,
+.result-names .result-badge.yuan-zijie,
+.result-names .result-badge.colorful-white,
+.result-names .result-badge.web-developer-result {
+    width: min(320px, 100%);
+    min-width: 0;
+    min-height: 165px;
+    /* 横向内边距留出足够内容宽度：带图标的学生（如王鹤凝的姓名 + 两个
+       48px 图标）也能保持单行，避免个别卡片被内容撑高、破坏整批一致性 */
+    padding: var(--tx-spacing-lg) var(--tx-spacing-xl);
+}
+
+/* 王鹤凝的狗/猫装饰图（.result-icon-left / -right）原先是 flex 子项，
+   与姓名各占一行，卡片高度接近同批其它卡片的两倍（≈309px vs 165px）。
+   按其类名语义改回姓名左右两侧的绝对定位，卡片高度随之与同批一致。 */
+.result-badge.wang-henning {
+    position: relative;
+    gap: 0;                       /* 原为左右图标预留的列间距，图标已改为绝对定位 */
+}
+
+.result-badge.wang-henning .result-icon-left,
+.result-badge.wang-henning .result-icon-right {
+    position: absolute;
+    top: 50%;
+    margin-top: -24px;            /* 图标高 48px，垂直居中；保留 bounce 动画的 translateY */
+}
+
+.result-badge.wang-henning .result-icon-left {
+    left: var(--tx-spacing-md);
+}
+
+.result-badge.wang-henning .result-icon-right {
+    right: var(--tx-spacing-md);
+}
+
+/* ---------- 2. 「五彩斑斓的黑」：恢复深色内芯 + 流动彩虹描边 ----------
+   原因：.result-badge 的 transform: scale(1) 会创建层叠上下文，于是
+   ::before(z-index:-1) 的整块彩虹绘制在卡片自身背景「之上」，把深色内芯
+   完全盖住；白色姓名与代码小图标压在明亮色带上不易分辨，而彩虹是 3s
+   循环动画，色带扫过图标位置时就表现为「代码标有时不显示」。
+   做法：把彩虹伪元素改为「只画一圈描边」——铺满卡片但用遮罩挖空内部，
+   深色内芯由卡片自身背景负责，彩虹只出现在透明边框处，且继续流动。 */
+.result-badge.web-developer-result::before,
+.group-member-card.web-developer-result::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 0;                       /* 卡片背景之上、文字之下 */
+    background: linear-gradient(45deg,
+        #ff0080, #ff8c00, #40e0d0, #8a2be2,
+        #ff0080, #ff8c00, #40e0d0, #8a2be2);
+    background-size: 400% 400%;
+    animation: rainbowBorder 3s ease infinite;
+    border-radius: inherit;
+    /* 只保留外圈：content-box 区域被排除 */
+    padding: 4px;
+    -webkit-mask: linear-gradient(#000 0 0) content-box exclude,
+                  linear-gradient(#000 0 0);
+    mask: linear-gradient(#000 0 0) content-box exclude,
+          linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+}
+
+/* 小组卡片描边厚度与其 3px 透明边框一致 */
+.group-member-card.web-developer-result::before {
+    padding: 3px;
+}
+
+/* ---------- 3. 代码标：加底衬并固定到卡片右上角 ----------
+   底衬 + 白图标，与弹窗/小组卡片里的 .web-dev-badge 保持同一视觉语言，
+   保证在任何卡片配色（金卡/深色卡）下都清晰可见；
+   改为角标后不再占用竖直空间，同批卡片高度因此完全一致。 */
+.result-badge .web-dev-mini-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+    font-size: 12px;
+    line-height: 1;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.45);
+}
+
+.result-badge.web-developer-result .web-dev-mini-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    margin: 0;
+    z-index: 10;
+}
