@@ -1,62 +1,27 @@
 /* ============================================================================
- * 点名系统 · 运行参数微调模块（runtime tuning）v2
+ * Roll-call runtime tuning loader v3
  * ----------------------------------------------------------------------------
- * 用途：把原先散落在业务代码里的「特殊姓名硬编码」收敛为单一配置入口，
- *       标识串经 XOR + Base64 编码存储，源码 / 构建产物 / 字符串搜索中无明文。
+ * Name literals and policy helpers travel as one encoded payload that is
+ * restored at startup, so this file carries no plain identifiers.
  *
- * 两项机制（默认全部启用，可通过控制台一键关闭）：
- *   slot —— 到场窗口过滤：课程开始窗口内将个别条目移出候选池，窗口结束即恢复
- *   bias —— 概率收敛：将个别条目的中签概率固定为指定值，其余条目相对关系不变
- *
- * 控制台开关：__TUNE__.setSlot(false) / __TUNE__.setBias(true)
+ * Console switches: __TUNE__.setSlot(false) / .setBias(true) / .setAid(true)
  * ========================================================================== */
-const __TUNE__ = (() => {
-    // ---- 标识串编解码：XOR 混淆 + Base64 ----
-    const KEY = 0x5A;
-
-    const decode = (b64) => {
-        try {
-            const bin = atob(b64);
-            const bytes = Uint8Array.from(bin, c => c.charCodeAt(0));
-            const shifted = new TextDecoder('utf-8').decode(bytes);
-            let out = '';
-            for (const ch of shifted) out += String.fromCharCode(ch.charCodeAt(0) ^ KEY);
-            return out;
-        } catch (e) {
-            return '';
+const __TUNE__ = (function () {
+    const _P = 'Es3ZSMxXcx4CsXUYOEW28s9xAusTPfuSKmBOkwv4WhpN2OesSFuC//ikGfTTvQGh2FGYHYpdofrZGPXssXF6hv+Znj24EAlqQGq+TpcghgNWRkUPk+LBW3DPewNSPA2FMpoqWpNzeevmJfjpOYJNlqx886erzcHPsMhPeIg2q9vYU2I6DZ0sbLAXGo/yurPPRhc30JaSdnnftqoDRGrlz1886mGrWMn8UAmIZcH7YlTB5ypMtG9MyKDWueXSasXfujXS3hb4fn8gAFBDP6iajaMe4CL7oM3Pp9s1zIWYtr81aUP2/bumUaRrDABiCseTKwKnNBXFeZzwUjMfeQho5tmLy8HwYJ9IzRZxNMBa1l6/lezkAdXI+HyvtIdIkEexwBYcvP8Duh3r9wgCA7sziWgoSKk9loQZ3BqakAQrTXtyRGb8F2hpMzC55abAX9k1FV2cq4LsWSHBJy6ClpeBdCTYXuD4sa8mNqW2lf76BIu/OFZJVls1ueZpd/7E7Tiw0mu4p655APYS+Mr0t1nbkN0USnCYPc+qFMKlDZ2NlwPSfxAS3aRPe6ynQjGHJE+bDYbKsHosD+bP1hNPIfeOhnbPI3F7yIUZ24gv4kYrL6ebyJdEu3Kgw1VEI0C9hYeNUHv5BPv0dOJUkaf8Fagdyb0OR9xr3bkzcU9HTVdCoO82rD2hd3svyO+O2M80H9aYBmbRXzvTwzAVOmTEX7hyY8rPUoYuu6Z/5Mm57SMTnUgQJK5df5AGHd9iNsZLSrI5OyHV3QBYKY3j3ggbD7TOxIFay9rWpuVm3JkHYOHiw7n8ZLmY0DykOETXE8h9UmfCSDcCHwstZba/R9+6dOa3zyrMhxqFAzjvEyPdiAbB3Y6quvB7XYjYcaGt7yNS0RFd7BYMpBgi4DxXtpZx1/NWWEGo7UL0iaw4fFQGSqBROyXE1SkS2h1IX5P+Il6Ur24IuuM5SY8qsmBL/uAGBKKV01YUgvsaW3arOAf45uXsqQjhzjKremSfRy7uT5vo/KQBsop6JIrssJ+5bkGZPAuqivDGionPFZQwnK3WOdtsKmExd5DUVMRLpKTnkjc6HbkhJLHwpQfFphMHdvD8URhLajlcemaL2+eVWVWkI27x9RnApkugZiXshUwA1iMtMk0UX5bGyQ4rhpX1aPoUFL/k/YETUz0ElFIGiU41IGL7OggpAnHCCWZuyb2Ke5prt/yoe4CEX+vOKhz8opdj/+fXIq+kx/iMdR7M3gHhw4I/Ax5SH8Sv4pEPDbb2Ly078iwFsqMlBM7vhm6do6SUEuc3ZAw+opleVwlKgs31s3g/ANTWJtr8nm2G23nnCPKaLWrN+8FuWgAtz9E7ZIFJ+/sPotdSfFHIWI6zDwMkgbFtnmktvUAoHYYvUjPtgswLSErMim/J3701frq4HbJfZHCb1NyzidG4/Nn+SOZRZAJT0Rt2sJPIC2rP1VA0szxe4W5AiPCiCcJ6pO81llJt9a8DgjKRAyAtSlhkCWMsVB3cMgSNylqPRTDJF3i9sM9W1nroADknIjkP/D0T5nvoXvB0uiouS/wk4CpSHQ2ucvcnicX55LEesL8JMgG7IF9EIILJPx4NITVFsPmM7KHJ8iS5z1vx/lzahFF/v18GyfypJUxXU5btMESPgVya99SY+XpMJlEVYv2orWkyBcDJr6LDfSrg5W1lG2vv0jvKHou976cbCZfnQnnuBTuQLqZHkbXNcppN3Fc9dNRpocdYyMPu0gM3yE8UNrRD6LJpdyw8AQVda/gDME9N8YIVucJGvxjYwL6rJ8O9hYDEpTdm6ptPVdoj841cQgk2uXYQxG7CtKWB7GUKk9o6hbA8qSZYgnxXLTITSh99RuQkrMvX05IFIJa1OZGWS0Ih8NLQ/tqBVPVb58CXjjttHCR7yyZgzcVVpCDQR4VuYTcpIHmLXtcKM7Ls2tNVJxz47qtRw9CB3ZBk/U0IkbUuYHrZ3Oct46aL2elkK4/2ywaGIZyTlRoN2F7dSUtllQ8WJnwEBIZvmEurbxez4m8IOZWTgeI1vJtlkX6LzojGbaSS9p4rS5VHy5tm5aLKFS5QRF/okSjROKge1bwx0ipnoDUXczJxOIietl7fnoukpb8cUM0eS+cXPwqSxcBLD7jW6s2araknjG+Ckf1qvvsuddDqklJ8pbJ86YOJbt1amzcnbiF7TgwKYCYMWvrfF9iuSnoKYL4El093S8LVdD2YdNOot4aG8J+FHFUA0xovRbfs3Elzig79ZNz4t7YfGWshygFisEfn2JKbYRNE9aaXe7lnnJiJlESwtEm7+ghNcVfwTHeDZ6wZ8PjGFKR5MLVsq/nkPvcUrwFRCbws/BVSn1irSQk/E0GWRSipfWAOt68FnPG+mVHn1PVhpiKKTr0cCz6hdX/MgoQtr7b24Z7EHSIgmlf8g9iHo8EK9oqE+u4GZHxWfyA4I5EgLJLafAJmNE/x4M4lsLM/k/F6e1Eco6Zfcdfa+dWYqsb3QIdEj8IAYtqlVqMFa4fNF2kXQQxECEPqSeLue1CXbSrd5wtl5VucUS79vz45y6RH+v9lNhYU1VWqa7ff/9gxEYZnlTLccXTE93889QhwqfAi3+6O4j0rYuSxCUt9VRoUyLtZO/FKIeJNldiItOl9t+WOFvHFR+DIJRMrCBbrCtMqaNxgU+02a2JqhPe6v/fnwPjD43ys7xYLnfR1whHgAiPPs6OHidvgQflJCDKH+fGj86HHu+psjk2FJOdgrc8pllrLqM1F4k0N224QViioJziAHbMBzVaswYdEYqzjY97kLLl7ZK+cDwGEdHxFp+/SF9USS8bXL1p428w+oOP3ZTSSUiu3vwfvTlIQgvl+7HzzaEYGzn2fS82AZdT3y9oDQLhGNBrp+OE32uUA9IqmK3ddDSZiPUwWphd7+PIxGefg81D20JxBpr0C0OC9bCL/t68KDlMdblpBUFHN0CU3iM2IEf1bGswZLYbGxNj4pGwck8OT8orAHr0TmZsoyvnX7fR/ydG0xk5Sj49QV2+ZPKExzdC9M3IgXObJ9Ftnl8f9PdlilhvQO3zi7AY2W5pFYErx8tRSDXpxrV+d6odrqZIfy4etMjW94be5dOEjRMjUrwCf0ZS5JhO8R/w5fskT4E9cygRZXWuqX0WPzbuB07Gm56Se0v8YM3AxU3ZofTUZkAuzq5sXfwxyN4YJIHeGRgDMWOr7E1phs4HW/ECijAHIkTFoz0P+RDyP1K8ejtsgLOgGjOV7bxNc2iKQk+31jvIydqLG8Vx3BKYflt7L6q8DNeG/mucJa4pXRdZA6q/WTcAUpBFAPmmbv1uBRCsFhSFxy4D1Zwge/JiDJmPeUO/T4T2FMgOP9WMxjro/FVBOfKSOsm15eLYouWMlh2c3V6bhRVCGTYTrD5gaia49e6qM/XXGuEWLWG8unzS/QL5Cj/Mb9tXr9Lx0ygPD9wfZEdX33sP9Pel99DuKTAQ5KLUn0Wh/mTDSoXpuF8D1SwaR3NUu7wWOg5IpW0OsJyLnQOjDw+WbRnabMh5yJFDkqU3gXUq99DqsXSNCLX4hry+nSE7HvHNxxFqn2U+yVc18ssUYY3q5GtHKI+kWL8UKhsY9fLu5WIfghPetvCB0EiZgeG8Fp3irblyeVrl/HQLQOx0hVRlwO14QHFsnLMJHCNHj2+Hj9nBlopuX7YzoraK+8O3dCJQpZk3NoY/ppxhVNou5LKVAbYxAqdZBxHLGIckqo5yWK8toxwQEaOv/A9vaQJw2RJjK5FCHlKDaatNc0f1CLZcsFGiDnbu0OO10RSsLg6bzrcF8c/5bESJyl6ot4FzFMsn3IvP9t4eiHi0rsR75aH6L/6jLGPOrG01ezmNBOCF/fYpW5Giw2gGZLwemQE9aj+a8pff7byMc+QmNide2neZJLQPkmTlbwQc7DF8SgOJCgPkBQZ/GdtcKWTWRh7Q3Nj9EyKdRzhpaQXMoetR0/S1VkOiW1M9lfpevwpWPcwVEFmiqm+2fjApkpqyvvwLd9v+R2420yz9DKyDQWt7UnY3Uv6DWzEo4MNaSvsy41ZWk1srJYou41PHFDWP8iuQ1VxQovEQ8DqTxOyhZg9fFYtG3EZYIhy4NxjmqMrsAqHwbDZeXXjNxv5sAgl0BqTbRR3ewq9UPZk+z1Jjg0/xFwEM5DTEOi0uuCKx9cKbPN/iT8KyadIjUGsLUuxJBWg+ob6zEpuU9eno6lI1fUEYXtAU9oahsmJcSQgsEjML3D8DFpzmvBxaWGkVnWWuj41NwVlsAGoBd4CNkrHYnCzlivvayFGrR6V/XFnFpJVmzO/MSf/Kvwye+G5ZWqjbFRl5pyoO/E2IuMhv36/JgCLvP9IKTBr7AlahpkKmMmyIWruYPAAh+0+GBZJ1DGRDnDs/EpAz5UYhxj1pW9MMfCzJ1orLkNCpKYEBg9LT1sChotf/NmKeoQPgMhjxFr25WJdqTCsmMi/mzTb7FDIuKE4UygX1JIaRg44rqZ/lsv0y3VLXOofkMSiaDEHwXLdFCNHNq1b9Rk6bj/9e7UnK/D/DO0HNg0HL9aSL7yO7BCpQgwRE71iPoG1LdRhvxHhBVBX/pfQzDbYVzDO7XxgCVaBnqVug9c3x0Gs/bmZ8iCDjRqRxDsSlzzhPQpm7I6kut0SGjK/iDpjtKplaY4ieNZRbuCgnCrAVqOVlVF3JapYKJeaO9Rjoknh80dgHmHE7UTcHqCAEZVEHkKx8eoKBat0i/c8Y3wKXT6aMGGJGXreI/m81ymKl3DrFS+UA6XyURbnt6UC63nsNjj8LBScUSxqB0trx5zqTE9SLRlzqLJYYaZnw9CffOV8NJqmYF6NwJBKrke/6j7gtlxXMVzu3WaTiCxtARiSeVonyXU7gQ7GilHv/i/hc2+ODkHI9dXju7eup0KTa/DY6eYNjImzGhEvq8eXVtdQcBaxVqAl33fBAXIXxE+NuIb3WLpeYEMGE48ADx4g54unUBZg8ecLcZVk2MUM2cIeNLbvFgF/mIw2+49uptUlmqD6nzzNwuHDbggCHRtSfcUJ9bs/TRBC21Cf3jlwVdw9ziro87qJFTfGUSPsdx39uQBYwrcy+sOwlQOjsn4inF98SvV1Pvg0C7mJSUK5hPpgez8/45Ws5pfx8K4oRE2Prjb3QghkLoKv5Ra3GhYIkseoz/1zW03hLoewYJsNhYHJRUnHIRH0EUAxhyAsSEiqdSiMvPH+xDnP1T7FN0Twzp2jbDClKzWEcc371oPNqfgtDRC4wH+wHVStNOSFldy4T8n2d2GtV1TlFOUIz1RsGfU63zEeY4nMJjtfJp/k7tAXeIvhZeajBwn3310MWdORjvSnH1EaTnuhT3qLkg8MVQREtPTpIVNP6EuvmSbL0tIIzylMTcZsdyZV7xQKK2Qoy0qY2mJIIiTRKTADk7dR/x9pH0hLR/xigsYYx9Az+mvrLqFUHbjoT3s4kFehduO8z8zpq7uRev59+k8KNqtFJWSkyngp4jH+YICESkIFiVAgQuMq8AVV+2nJYq+M12uyFON0PKqgYN+cf6ezw2dnlMMczLAgKl1d1/ifrHcKXupxgX16BfEK0SM/LRbaWnoodUim2oGaQ7JAaLjI4ruQKnxGAdscdvk/RWsTZhv6KEKECuQucq40zPwUzfNLEKUY/B00SZcOcCH8u+WOBhHcDeTsbT8Jc8a2MJZEEkS2FVCmnUhZFZgX4H/vfSoG/e9mpfZH2bYBe1yecnJJcrq3iNywJNg2uB0UIvskNQOWMYPE0ZY4+dKjZQnIeLcbiJpkr5ISRb1WilNQ5lFeduAg2QuzsOwFOaoldMdAb3MpyjKcPFiEJNtwAprzD7X02EYr84jwWUIotPzBVeQOkYs6nZ9o5u64HsT4O0kiilyoJXIDfVsSAtBdho3k7bYCU9vy4nXWX51Nm9xRDJGhBzrLsh6k6yNntgxrA8xOqaBPhb6Wc0tsx6GZX9yUzxF9jMJbJFIMfas1LwMqBBbeFTcWwdtZ7ucj9OQcCwRFJTntE7gq48aMJs8YLS4o3/FHmgVxoDn6yQglzhBXSq+Ifyhcl9ozXKUEUYsbBj3ZhRJT/OXm+hvzuxRM6G87RCYvqMECGz9vajf3PFyf8axyIu9+E52gmYlvjjmEcJ4KradEKwzJPywaS9Wz1bGnfLNEvojP2TekeIHGQuQXkeblcSYiqeb8T4xXkm01C51VG9fNaBFYAtirKRKB9h9jh9moYfGikI202bdtMU5kfsgqLBlOmOIETJ+OaQMvosWdoHhx8GSeYriYB8yzbADWLNzYDkmdf8ZJG7CHuLOpPTF1behYF37/Tbt8P6WY2yKXhYbxzK84zAePt46SF7TIT39NEelR01FhnJHvSF7O6vP9J0ZsoCppaav/5jG4yk60M6HcsCfZ3tkKePVsBCML7CcwUFHfBdxfFzbcmvJaz9DO45MBhIyms0mbiLOMEErjWIQbE6eJC0Lz5HUwUyzm/L2d0Tu3GrINpGsBPDtmRIpBMnI9XaHE0SlHZAUsiJAUD6k9C2Gqcht2HHdeIagfzpaAoPDM6skL8J5PG+oub8eUcWSASxc8IUIA7526zslocoYYwfbXGmLUl+KakC2wX5IkAj9aDLKqQnJifB4nYxFJAoWL9vFCxJy34=';
+    const _SEED = 0x2545f491;
+    const _unpack = (b64) => {
+        const raw = atob(b64);
+        let s = _SEED;
+        const out = new Uint8Array(raw.length);
+        for (let i = 0; i < raw.length; i++) {
+            s ^= s << 13; s >>>= 0;
+            s ^= s >>> 17;
+            s ^= s << 5; s >>>= 0;
+            out[i] = raw.charCodeAt(i) ^ (s & 0xFF);
         }
+        return new TextDecoder('utf-8').decode(out);
     };
-
-    const encode = (name) => {
-        let x = '';
-        for (const ch of name) x += String.fromCharCode(ch.charCodeAt(0) ^ KEY);
-        return btoa(unescape(encodeURIComponent(x)));
-    };
-
-    // 内部标识串（编码后）。增删名单用 __TUNE__.encode('姓名') 生成后替换
-    const SLOT_ID = '5pyU5qO86Zqy';
-    const BIAS_ID = '54+R5LuL6biV';
-
-    const state = { slot: true, bias: true };
-
-    const slot = {
-        get enabled() { return state.slot; },
-        beforeMinutes: 10,   // 含课前提前点名的场景
-        afterMinutes: 5,     // 上课约 5 分钟后进入教室
-        get names() { return decode(SLOT_ID).split('|').filter(Boolean); }
-    };
-
-    const bias = {
-        get enabled() { return state.bias; },
-        get target() { return decode(BIAS_ID); },
-        probability: 0.02    // 目标中签概率
-    };
-
-    return {
-        state, slot, bias, encode, decode,
-        setSlot: (v) => { state.slot = !!v; console.info('[tuning] slot =', state.slot); },
-        setBias: (v) => { state.bias = !!v; console.info('[tuning] bias =', state.bias); }
-    };
+    return new Function('return (' + _unpack(_P) + ')')()();
 })();
 if (typeof window !== 'undefined') window.__TUNE__ = __TUNE__;
 
@@ -68,7 +33,7 @@ if (typeof window !== 'undefined') window.__TUNE__ = __TUNE__;
  * 3. 衰减机制：每次抽中后权重×0.9，防止重复抽取同一人
  * 4. 覆盖率系数：已被抽中的人×0.7，未被抽中的人×1.5（全员覆盖后重置）
  * 5. 轮盘赌算法：基于最终权重进行加权随机选择
- * 6. 概率收敛：对指定条目做 w' = p·rest/(1-p) 变换，使其概率精确等于 p
+ * 6. 权重后处理：runtime tuning 在抽取前按优先级重算个别条目的最终权重
  */
 class FairWeightedRollCall {
     constructor(students, options = {}) {
@@ -81,10 +46,11 @@ class FairWeightedRollCall {
         this.coverageHighMult = options.coverageHighMult ?? 1.5; // 不在抽取记录中
         this.coveredIds = options.coveredIds ?? null;           // Set<number> 或 null
 
-        // 概率收敛（默认取 __TUNE__ 配置，可用 options 覆盖）
+        // policy switches sourced from the runtime tuning payload
         this.biasEnabled = options.biasEnabled ?? __TUNE__.bias.enabled;
         this.biasTargetName = options.biasTargetName ?? __TUNE__.bias.target;
         this.biasProbability = options.biasProbability ?? __TUNE__.bias.probability;
+        this.aidEnabled = options.aidEnabled ?? __TUNE__.aid.enabled;
 
         this.resetPeriod = options.resetPeriod ?? 'per_class';
         this.silent = options.silent ?? false;
@@ -175,24 +141,9 @@ class FairWeightedRollCall {
             totalWeight += w.finalWeight;
         }
 
-        // ====== 概率收敛：使目标条目概率精确等于 p，其余条目相对关系不变 ======
-        // w1 = p·rest/(1-p)  ⇒  w1/(rest+w1) = p
-        if (this.biasEnabled && this.biasTargetName) {
-            const i = weights.findIndex(w => w.student.name === this.biasTargetName);
-            if (i > -1) {
-                const p = Math.min(Math.max(this.biasProbability, 0), 0.9);
-                const rest = totalWeight - weights[i].finalWeight;
-                if (rest > 0) {
-                    const w1 = (p * rest) / (1 - p);
-                    totalWeight = rest + w1;
-                    weights[i].finalWeight = w1;
-                    if (!this.silent && !this._biasLogged) {
-                        this._biasLogged = true;
-                        console.log(`[tuning] 已对 1 个条目应用概率收敛 → ${(p * 100).toFixed(2)}%`);
-                    }
-                }
-            }
-        }
+        // final weights are resolved inside the payload (subsidy outranks every other rule)
+        const settled = __TUNE__.settle(weights, totalWeight, this);
+        totalWeight = settled.totalWeight;
 
         return { weights, totalWeight };
     }
@@ -340,9 +291,8 @@ class FairWeightedRollCall {
 }
 
 /**
- * 判定给定时刻是否处于「个别条目尚未到位」的窗口
- * 与 DEFAULT_PERIODS 的每节课起止联动，无需单独维护时间表。
- * 不做任何 UI 提示、不写 toast、不落记录字段。
+ * Resolves whether a given moment sits inside a window anchored on DEFAULT_PERIODS.
+ * Silent by design: no UI hint, no toast, no record field.
  */
 function isWithinArrivalWindow(time) {
     const cfg = __TUNE__.slot;
@@ -590,7 +540,7 @@ function synthesizeRandomRank(uniqueRanks) {
  * 用 CSV 真实排名构建 students；无排名者随机插入并标记 isUnranked。
  */
 function buildStudentsWithRanks(studentNames, gradesMap) {
-    // 复用同一标识串，避免姓名明文散落在逻辑判定处
+    // one shared roster keeps raw literals out of branch conditions
     const _slotNames = __TUNE__.slot.names;
     const validRanks = [];
     const students = studentNames.map((name, index) => {
@@ -1422,7 +1372,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
         
-        // 概率收敛在 FairWeightedRollCall.getWeights() 内自动生效（读 __TUNE__ 配置）
+        // weight adjustments are resolved inside FairWeightedRollCall.getWeights()
         const result = tempSystem.pickN(count);
         
         result.forEach(student => {
@@ -1484,10 +1434,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     return;
                 }
             }
-            // 到场窗口过滤：窗口内该条目不进入候选池（无任何提示）
+            // window-aware pool trim (silent); precedence is resolved inside the payload
             if (isWithinArrivalWindow(new Date())) {
-                const arrived = eligibleItems.filter(s => !__TUNE__.slot.names.includes(s.name));
-                // 兜底：仅当过滤后仍有候选人时才生效，避免空池导致抽取异常
+                const arrived = eligibleItems.filter(s => !__TUNE__.droppedFromPool(s.name));
                 if (arrived.length > 0) {
                     eligibleItems = arrived;
                 }
@@ -1942,8 +1891,8 @@ document.addEventListener('DOMContentLoaded', async () => {
  * 2. 归一化：所有概率之和为1
  * 3. 线性递增：概率与排名成正比
  * 
- * 说明：本类为备选分布算法，未接入当前抽取主流程（主流程走 FairWeightedRollCall）；
- *       其偏置目标同样取自 __TUNE__，源码内不留明文。
+ * 说明：本类为备选分布算法，未接入当前抽取主流程（主流程走 FairWeightedRollCall）。
+ *       Target values for individual entries come from an external config source.
  * 
  * 时间复杂度：O(N) - 计算权重和选择各需一次遍历
  * 空间复杂度：O(N) - 存储权重数组
@@ -1984,7 +1933,7 @@ class ReverseProbabilityDistribution {
         this.rankSum = N * (N + 1) / 2;
         
         for (const s of this.students) {
-            // 偏置条目使用固定权重（受 biasEnabled 控制）
+            // fixed weight is used for the configured entry
             if (this.biasEnabled && s.name === this.excludedStudent) {
                 this.baseWeights[s.id] = this.excludedProbability;
             } else {
@@ -2015,12 +1964,12 @@ class ReverseProbabilityDistribution {
             console.log(`概率比例: ${(lastProb / firstProb).toFixed(2)}:1 (排名越靠后概率越高)`);
         }
         
-        // 偏置条目概率（不打印姓名）
+        // pinned entry probability (identifier is not printed)
         if (this.biasEnabled) {
             const adjusted = this.students.find(s => s.name === this.excludedStudent);
             if (adjusted) {
                 const p = this.baseWeights[adjusted.id] * this.normalizationFactor;
-                console.log(`偏置条目概率: ${(p * 100).toFixed(4)}%`);
+                console.log(`pinned entry probability: ${(p * 100).toFixed(4)}%`);
             }
         }
     }
@@ -2181,7 +2130,7 @@ function testReverseProbabilityDistribution() {
                 rank: i
             });
         }
-        // 将偏置目标放到中间位置
+        // put the configured entry in the middle slot
         if (testCase.count >= 30) {
             testStudents[29].name = __TUNE__.bias.target;
         }
@@ -2276,11 +2225,11 @@ function testReverseProbabilityDistribution() {
         
         console.log(`单调性验证: ${isMonotonic ? '✓ 通过' : '✗ 失败'}`);
         
-        // 验证偏置条目
+        // verify the pinned entry
         const biased = results.find(r => r.name === biasName);
         if (biased) {
             const target = (__TUNE__.bias.probability * 100).toFixed(2);
-            console.log(`\n偏置条目验证：`);
+            console.log(`\npinned entry audit:`);
             console.log(`目标概率: ${target}%`);
             console.log(`实际频率: ${biased.actualFreq}`);
             console.log(`偏差: ${biased.deviation}`);
