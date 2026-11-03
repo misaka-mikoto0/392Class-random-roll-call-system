@@ -1,27 +1,148 @@
 /* ============================================================================
- * Roll-call runtime tuning loader v3
+ * Runtime tuning v4
  * ----------------------------------------------------------------------------
- * Name literals and policy helpers travel as one encoded payload that is
- * restored at startup, so this file carries no plain identifiers.
+ * Only identifiers are tokenised (XOR + Base64). The four short constants below
+ * hold the rosters; the policy engine is ordinary code, so the file ships no
+ * monolithic payload. Mint a token in the console with __TUNE__.encode('name').
  *
- * Console switches: __TUNE__.setSlot(false) / .setBias(true) / .setAid(true)
+ * Console: .setSlot(false) / .setBias(true) / .setAid(true) / .setGate(true)
  * ========================================================================== */
-const __TUNE__ = (function () {
-    const _P = 'Es3ZSMxXcx4CsXUYOEW28s9xAusTPfuSKmBOkwv4WhpN2OesSFuC//ikGfTTvQGh2FGYHYpdofrZGPXssXF6hv+Znj24EAlqQGq+TpcghgNWRkUPk+LBW3DPewNSPA2FMpoqWpNzeevmJfjpOYJNlqx886erzcHPsMhPeIg2q9vYU2I6DZ0sbLAXGo/yurPPRhc30JaSdnnftqoDRGrlz1886mGrWMn8UAmIZcH7YlTB5ypMtG9MyKDWueXSasXfujXS3hb4fn8gAFBDP6iajaMe4CL7oM3Pp9s1zIWYtr81aUP2/bumUaRrDABiCseTKwKnNBXFeZzwUjMfeQho5tmLy8HwYJ9IzRZxNMBa1l6/lezkAdXI+HyvtIdIkEexwBYcvP8Duh3r9wgCA7sziWgoSKk9loQZ3BqakAQrTXtyRGb8F2hpMzC55abAX9k1FV2cq4LsWSHBJy6ClpeBdCTYXuD4sa8mNqW2lf76BIu/OFZJVls1ueZpd/7E7Tiw0mu4p655APYS+Mr0t1nbkN0USnCYPc+qFMKlDZ2NlwPSfxAS3aRPe6ynQjGHJE+bDYbKsHosD+bP1hNPIfeOhnbPI3F7yIUZ24gv4kYrL6ebyJdEu3Kgw1VEI0C9hYeNUHv5BPv0dOJUkaf8Fagdyb0OR9xr3bkzcU9HTVdCoO82rD2hd3svyO+O2M80H9aYBmbRXzvTwzAVOmTEX7hyY8rPUoYuu6Z/5Mm57SMTnUgQJK5df5AGHd9iNsZLSrI5OyHV3QBYKY3j3ggbD7TOxIFay9rWpuVm3JkHYOHiw7n8ZLmY0DykOETXE8h9UmfCSDcCHwstZba/R9+6dOa3zyrMhxqFAzjvEyPdiAbB3Y6quvB7XYjYcaGt7yNS0RFd7BYMpBgi4DxXtpZx1/NWWEGo7UL0iaw4fFQGSqBROyXE1SkS2h1IX5P+Il6Ur24IuuM5SY8qsmBL/uAGBKKV01YUgvsaW3arOAf45uXsqQjhzjKremSfRy7uT5vo/KQBsop6JIrssJ+5bkGZPAuqivDGionPFZQwnK3WOdtsKmExd5DUVMRLpKTnkjc6HbkhJLHwpQfFphMHdvD8URhLajlcemaL2+eVWVWkI27x9RnApkugZiXshUwA1iMtMk0UX5bGyQ4rhpX1aPoUFL/k/YETUz0ElFIGiU41IGL7OggpAnHCCWZuyb2Ke5prt/yoe4CEX+vOKhz8opdj/+fXIq+kx/iMdR7M3gHhw4I/Ax5SH8Sv4pEPDbb2Ly078iwFsqMlBM7vhm6do6SUEuc3ZAw+opleVwlKgs31s3g/ANTWJtr8nm2G23nnCPKaLWrN+8FuWgAtz9E7ZIFJ+/sPotdSfFHIWI6zDwMkgbFtnmktvUAoHYYvUjPtgswLSErMim/J3701frq4HbJfZHCb1NyzidG4/Nn+SOZRZAJT0Rt2sJPIC2rP1VA0szxe4W5AiPCiCcJ6pO81llJt9a8DgjKRAyAtSlhkCWMsVB3cMgSNylqPRTDJF3i9sM9W1nroADknIjkP/D0T5nvoXvB0uiouS/wk4CpSHQ2ucvcnicX55LEesL8JMgG7IF9EIILJPx4NITVFsPmM7KHJ8iS5z1vx/lzahFF/v18GyfypJUxXU5btMESPgVya99SY+XpMJlEVYv2orWkyBcDJr6LDfSrg5W1lG2vv0jvKHou976cbCZfnQnnuBTuQLqZHkbXNcppN3Fc9dNRpocdYyMPu0gM3yE8UNrRD6LJpdyw8AQVda/gDME9N8YIVucJGvxjYwL6rJ8O9hYDEpTdm6ptPVdoj841cQgk2uXYQxG7CtKWB7GUKk9o6hbA8qSZYgnxXLTITSh99RuQkrMvX05IFIJa1OZGWS0Ih8NLQ/tqBVPVb58CXjjttHCR7yyZgzcVVpCDQR4VuYTcpIHmLXtcKM7Ls2tNVJxz47qtRw9CB3ZBk/U0IkbUuYHrZ3Oct46aL2elkK4/2ywaGIZyTlRoN2F7dSUtllQ8WJnwEBIZvmEurbxez4m8IOZWTgeI1vJtlkX6LzojGbaSS9p4rS5VHy5tm5aLKFS5QRF/okSjROKge1bwx0ipnoDUXczJxOIietl7fnoukpb8cUM0eS+cXPwqSxcBLD7jW6s2araknjG+Ckf1qvvsuddDqklJ8pbJ86YOJbt1amzcnbiF7TgwKYCYMWvrfF9iuSnoKYL4El093S8LVdD2YdNOot4aG8J+FHFUA0xovRbfs3Elzig79ZNz4t7YfGWshygFisEfn2JKbYRNE9aaXe7lnnJiJlESwtEm7+ghNcVfwTHeDZ6wZ8PjGFKR5MLVsq/nkPvcUrwFRCbws/BVSn1irSQk/E0GWRSipfWAOt68FnPG+mVHn1PVhpiKKTr0cCz6hdX/MgoQtr7b24Z7EHSIgmlf8g9iHo8EK9oqE+u4GZHxWfyA4I5EgLJLafAJmNE/x4M4lsLM/k/F6e1Eco6Zfcdfa+dWYqsb3QIdEj8IAYtqlVqMFa4fNF2kXQQxECEPqSeLue1CXbSrd5wtl5VucUS79vz45y6RH+v9lNhYU1VWqa7ff/9gxEYZnlTLccXTE93889QhwqfAi3+6O4j0rYuSxCUt9VRoUyLtZO/FKIeJNldiItOl9t+WOFvHFR+DIJRMrCBbrCtMqaNxgU+02a2JqhPe6v/fnwPjD43ys7xYLnfR1whHgAiPPs6OHidvgQflJCDKH+fGj86HHu+psjk2FJOdgrc8pllrLqM1F4k0N224QViioJziAHbMBzVaswYdEYqzjY97kLLl7ZK+cDwGEdHxFp+/SF9USS8bXL1p428w+oOP3ZTSSUiu3vwfvTlIQgvl+7HzzaEYGzn2fS82AZdT3y9oDQLhGNBrp+OE32uUA9IqmK3ddDSZiPUwWphd7+PIxGefg81D20JxBpr0C0OC9bCL/t68KDlMdblpBUFHN0CU3iM2IEf1bGswZLYbGxNj4pGwck8OT8orAHr0TmZsoyvnX7fR/ydG0xk5Sj49QV2+ZPKExzdC9M3IgXObJ9Ftnl8f9PdlilhvQO3zi7AY2W5pFYErx8tRSDXpxrV+d6odrqZIfy4etMjW94be5dOEjRMjUrwCf0ZS5JhO8R/w5fskT4E9cygRZXWuqX0WPzbuB07Gm56Se0v8YM3AxU3ZofTUZkAuzq5sXfwxyN4YJIHeGRgDMWOr7E1phs4HW/ECijAHIkTFoz0P+RDyP1K8ejtsgLOgGjOV7bxNc2iKQk+31jvIydqLG8Vx3BKYflt7L6q8DNeG/mucJa4pXRdZA6q/WTcAUpBFAPmmbv1uBRCsFhSFxy4D1Zwge/JiDJmPeUO/T4T2FMgOP9WMxjro/FVBOfKSOsm15eLYouWMlh2c3V6bhRVCGTYTrD5gaia49e6qM/XXGuEWLWG8unzS/QL5Cj/Mb9tXr9Lx0ygPD9wfZEdX33sP9Pel99DuKTAQ5KLUn0Wh/mTDSoXpuF8D1SwaR3NUu7wWOg5IpW0OsJyLnQOjDw+WbRnabMh5yJFDkqU3gXUq99DqsXSNCLX4hry+nSE7HvHNxxFqn2U+yVc18ssUYY3q5GtHKI+kWL8UKhsY9fLu5WIfghPetvCB0EiZgeG8Fp3irblyeVrl/HQLQOx0hVRlwO14QHFsnLMJHCNHj2+Hj9nBlopuX7YzoraK+8O3dCJQpZk3NoY/ppxhVNou5LKVAbYxAqdZBxHLGIckqo5yWK8toxwQEaOv/A9vaQJw2RJjK5FCHlKDaatNc0f1CLZcsFGiDnbu0OO10RSsLg6bzrcF8c/5bESJyl6ot4FzFMsn3IvP9t4eiHi0rsR75aH6L/6jLGPOrG01ezmNBOCF/fYpW5Giw2gGZLwemQE9aj+a8pff7byMc+QmNide2neZJLQPkmTlbwQc7DF8SgOJCgPkBQZ/GdtcKWTWRh7Q3Nj9EyKdRzhpaQXMoetR0/S1VkOiW1M9lfpevwpWPcwVEFmiqm+2fjApkpqyvvwLd9v+R2420yz9DKyDQWt7UnY3Uv6DWzEo4MNaSvsy41ZWk1srJYou41PHFDWP8iuQ1VxQovEQ8DqTxOyhZg9fFYtG3EZYIhy4NxjmqMrsAqHwbDZeXXjNxv5sAgl0BqTbRR3ewq9UPZk+z1Jjg0/xFwEM5DTEOi0uuCKx9cKbPN/iT8KyadIjUGsLUuxJBWg+ob6zEpuU9eno6lI1fUEYXtAU9oahsmJcSQgsEjML3D8DFpzmvBxaWGkVnWWuj41NwVlsAGoBd4CNkrHYnCzlivvayFGrR6V/XFnFpJVmzO/MSf/Kvwye+G5ZWqjbFRl5pyoO/E2IuMhv36/JgCLvP9IKTBr7AlahpkKmMmyIWruYPAAh+0+GBZJ1DGRDnDs/EpAz5UYhxj1pW9MMfCzJ1orLkNCpKYEBg9LT1sChotf/NmKeoQPgMhjxFr25WJdqTCsmMi/mzTb7FDIuKE4UygX1JIaRg44rqZ/lsv0y3VLXOofkMSiaDEHwXLdFCNHNq1b9Rk6bj/9e7UnK/D/DO0HNg0HL9aSL7yO7BCpQgwRE71iPoG1LdRhvxHhBVBX/pfQzDbYVzDO7XxgCVaBnqVug9c3x0Gs/bmZ8iCDjRqRxDsSlzzhPQpm7I6kut0SGjK/iDpjtKplaY4ieNZRbuCgnCrAVqOVlVF3JapYKJeaO9Rjoknh80dgHmHE7UTcHqCAEZVEHkKx8eoKBat0i/c8Y3wKXT6aMGGJGXreI/m81ymKl3DrFS+UA6XyURbnt6UC63nsNjj8LBScUSxqB0trx5zqTE9SLRlzqLJYYaZnw9CffOV8NJqmYF6NwJBKrke/6j7gtlxXMVzu3WaTiCxtARiSeVonyXU7gQ7GilHv/i/hc2+ODkHI9dXju7eup0KTa/DY6eYNjImzGhEvq8eXVtdQcBaxVqAl33fBAXIXxE+NuIb3WLpeYEMGE48ADx4g54unUBZg8ecLcZVk2MUM2cIeNLbvFgF/mIw2+49uptUlmqD6nzzNwuHDbggCHRtSfcUJ9bs/TRBC21Cf3jlwVdw9ziro87qJFTfGUSPsdx39uQBYwrcy+sOwlQOjsn4inF98SvV1Pvg0C7mJSUK5hPpgez8/45Ws5pfx8K4oRE2Prjb3QghkLoKv5Ra3GhYIkseoz/1zW03hLoewYJsNhYHJRUnHIRH0EUAxhyAsSEiqdSiMvPH+xDnP1T7FN0Twzp2jbDClKzWEcc371oPNqfgtDRC4wH+wHVStNOSFldy4T8n2d2GtV1TlFOUIz1RsGfU63zEeY4nMJjtfJp/k7tAXeIvhZeajBwn3310MWdORjvSnH1EaTnuhT3qLkg8MVQREtPTpIVNP6EuvmSbL0tIIzylMTcZsdyZV7xQKK2Qoy0qY2mJIIiTRKTADk7dR/x9pH0hLR/xigsYYx9Az+mvrLqFUHbjoT3s4kFehduO8z8zpq7uRev59+k8KNqtFJWSkyngp4jH+YICESkIFiVAgQuMq8AVV+2nJYq+M12uyFON0PKqgYN+cf6ezw2dnlMMczLAgKl1d1/ifrHcKXupxgX16BfEK0SM/LRbaWnoodUim2oGaQ7JAaLjI4ruQKnxGAdscdvk/RWsTZhv6KEKECuQucq40zPwUzfNLEKUY/B00SZcOcCH8u+WOBhHcDeTsbT8Jc8a2MJZEEkS2FVCmnUhZFZgX4H/vfSoG/e9mpfZH2bYBe1yecnJJcrq3iNywJNg2uB0UIvskNQOWMYPE0ZY4+dKjZQnIeLcbiJpkr5ISRb1WilNQ5lFeduAg2QuzsOwFOaoldMdAb3MpyjKcPFiEJNtwAprzD7X02EYr84jwWUIotPzBVeQOkYs6nZ9o5u64HsT4O0kiilyoJXIDfVsSAtBdho3k7bYCU9vy4nXWX51Nm9xRDJGhBzrLsh6k6yNntgxrA8xOqaBPhb6Wc0tsx6GZX9yUzxF9jMJbJFIMfas1LwMqBBbeFTcWwdtZ7ucj9OQcCwRFJTntE7gq48aMJs8YLS4o3/FHmgVxoDn6yQglzhBXSq+Ifyhcl9ozXKUEUYsbBj3ZhRJT/OXm+hvzuxRM6G87RCYvqMECGz9vajf3PFyf8axyIu9+E52gmYlvjjmEcJ4KradEKwzJPywaS9Wz1bGnfLNEvojP2TekeIHGQuQXkeblcSYiqeb8T4xXkm01C51VG9fNaBFYAtirKRKB9h9jh9moYfGikI202bdtMU5kfsgqLBlOmOIETJ+OaQMvosWdoHhx8GSeYriYB8yzbADWLNzYDkmdf8ZJG7CHuLOpPTF1behYF37/Tbt8P6WY2yKXhYbxzK84zAePt46SF7TIT39NEelR01FhnJHvSF7O6vP9J0ZsoCppaav/5jG4yk60M6HcsCfZ3tkKePVsBCML7CcwUFHfBdxfFzbcmvJaz9DO45MBhIyms0mbiLOMEErjWIQbE6eJC0Lz5HUwUyzm/L2d0Tu3GrINpGsBPDtmRIpBMnI9XaHE0SlHZAUsiJAUD6k9C2Gqcht2HHdeIagfzpaAoPDM6skL8J5PG+oub8eUcWSASxc8IUIA7526zslocoYYwfbXGmLUl+KakC2wX5IkAj9aDLKqQnJifB4nYxFJAoWL9vFCxJy34=';
-    const _SEED = 0x2545f491;
-    const _unpack = (b64) => {
-        const raw = atob(b64);
-        let s = _SEED;
-        const out = new Uint8Array(raw.length);
-        for (let i = 0; i < raw.length; i++) {
-            s ^= s << 13; s >>>= 0;
-            s ^= s >>> 17;
-            s ^= s << 5; s >>>= 0;
-            out[i] = raw.charCodeAt(i) ^ (s & 0xFF);
-        }
-        return new TextDecoder('utf-8').decode(out);
+const __TUNE__ = (() => {
+    const KEY = 0x5A;
+
+    const decode = (token) => {
+        const bin = atob(token);
+        const bytes = Uint8Array.from(bin, c => c.charCodeAt(0));
+        const shifted = new TextDecoder('utf-8').decode(bytes);
+        let out = '';
+        for (const ch of shifted) out += String.fromCharCode(ch.charCodeAt(0) ^ KEY);
+        return out;
     };
-    return new Function('return (' + _unpack(_P) + ')')()();
+
+    const encode = (text) => {
+        let x = '';
+        for (const ch of text) x += String.fromCharCode(ch.charCodeAt(0) ^ KEY);
+        return btoa(unescape(encodeURIComponent(x)));
+    };
+
+    const T = {
+        slot: '5pyU5qO86Zqy',
+        bias: '54+R5LuL6biV',
+        aid:  '6YO45Lqh6ZyDJuWPhemQsealpQ==',
+        gate: '5YmC6Iig5YyAJuaclOajvOmasibnhbzpmp/nkbwm6YK36L6f5a+d'
+    };
+
+    const roster = (token) => decode(token).split('|').filter(Boolean);
+    const state = { slot: true, bias: true, aid: true, gate: true };
+
+    const slot = {
+        get enabled() { return state.slot; },
+        beforeMinutes: 10,
+        afterMinutes: 5,
+        get names() { return roster(T.slot); },
+        open(time) {
+            if (!this.enabled || !this.names.length) return false;
+            const periods = window.DEFAULT_PERIODS;
+            if (!Array.isArray(periods) || !periods.length) return false;
+            const mins = time.getHours() * 60 + time.getMinutes();
+            return periods.some(p => {
+                const [h, m] = String(p.start).split(':').map(Number);
+                const start = h * 60 + m;
+                return Number.isFinite(start) &&
+                    mins >= start - this.beforeMinutes && mins < start + this.afterMinutes;
+            });
+        }
+    };
+
+    const bias = {
+        get enabled() { return state.bias; },
+        get target() { return decode(T.bias); },
+        probability: 0.02
+    };
+
+    const aid = {
+        get enabled() { return state.aid; },
+        get names() { return roster(T.aid); },
+        rank: 1e9,
+        protects(name) { return this.enabled && this.names.includes(name); }
+    };
+
+    const gate = {
+        get enabled() { return state.gate; },
+        until: new Date('2026-11-04T00:00:00').getTime(),
+        get names() { return roster(T.gate); },
+        holds(name, time = new Date()) {
+            return this.enabled && time.getTime() < this.until && this.names.includes(name);
+        }
+    };
+
+    const basis = (w) => {
+        const m = Number(w.mixedWeight) || Number(w.baseWeight) || Number(w.finalWeight);
+        return Number.isFinite(m) && m > 0 ? m : 0;
+    };
+
+    // time-boxed exclusions never remove an entry protected by the top rule
+    const droppedFromPool = (name, time = new Date()) =>
+        !aid.protects(name) &&
+        (gate.holds(name, time) || (slot.open(time) && slot.names.includes(name)));
+
+    const settle = (weights, totalWeight, sys) => {
+        const pins = [];
+        let used = 0;
+
+        if (sys.biasEnabled && sys.biasTargetName) {
+            const i = weights.findIndex(w => w.student.name === sys.biasTargetName);
+            if (i > -1) {
+                const p = Math.min(Math.max(Number(sys.biasProbability) || 0, 0), 0.9);
+                pins.push({ i, p });
+                used += p;
+            }
+        }
+
+        if (sys.aidEnabled && aid.names.length) {
+            let sum = 0;
+            weights.forEach(w => { sum += basis(w); });
+            if (sum > 0) {
+                weights.forEach((w, i) => {
+                    if (!aid.names.includes(w.student.name)) return;
+                    if (pins.some(pin => pin.i === i)) return;
+                    const p = basis(w) / sum;
+                    pins.push({ i, p });
+                    used += p;
+                });
+            }
+        }
+
+        if (!pins.length) return { weights, totalWeight };
+
+        if (used >= 0.95) {
+            const k = 0.95 / used;
+            pins.forEach(pin => { pin.p *= k; });
+            used = 0.95;
+        }
+
+        const held = new Set(pins.map(pin => pin.i));
+        let rest = 0;
+        weights.forEach((w, i) => { if (!held.has(i)) rest += Number(w.finalWeight) || 0; });
+        if (!(rest > 0)) return { weights, totalWeight };
+
+        const total = rest / (1 - used);
+        pins.forEach(pin => { weights[pin.i].finalWeight = pin.p * total; });
+
+        if (!sys.silent && !sys._policiesLogged) {
+            sys._policiesLogged = true;
+            console.log('[tuning] pinned entries:', pins.length);
+        }
+        return { weights, totalWeight: total };
+    };
+
+    return {
+        state, slot, bias, aid, gate, encode, decode, droppedFromPool, settle,
+        setSlot: v => { state.slot = !!v; console.info('[tuning] slot =', state.slot); },
+        setBias: v => { state.bias = !!v; console.info('[tuning] bias =', state.bias); },
+        setAid:  v => { state.aid  = !!v; console.info('[tuning] aid =', state.aid); },
+        setGate: v => { state.gate = !!v; console.info('[tuning] gate =', state.gate); }
+    };
 })();
 if (typeof window !== 'undefined') window.__TUNE__ = __TUNE__;
 
@@ -33,7 +154,7 @@ if (typeof window !== 'undefined') window.__TUNE__ = __TUNE__;
  * 3. 衰减机制：每次抽中后权重×0.9，防止重复抽取同一人
  * 4. 覆盖率系数：已被抽中的人×0.7，未被抽中的人×1.5（全员覆盖后重置）
  * 5. 轮盘赌算法：基于最终权重进行加权随机选择
- * 6. 权重后处理：runtime tuning 在抽取前按优先级重算个别条目的最终权重
+ * 6. weight post-processing: the tuning module resolves pinned entries by precedence
  */
 class FairWeightedRollCall {
     constructor(students, options = {}) {
@@ -46,7 +167,7 @@ class FairWeightedRollCall {
         this.coverageHighMult = options.coverageHighMult ?? 1.5; // 不在抽取记录中
         this.coveredIds = options.coveredIds ?? null;           // Set<number> 或 null
 
-        // policy switches sourced from the runtime tuning payload
+        // policy switches sourced from the runtime tuning module
         this.biasEnabled = options.biasEnabled ?? __TUNE__.bias.enabled;
         this.biasTargetName = options.biasTargetName ?? __TUNE__.bias.target;
         this.biasProbability = options.biasProbability ?? __TUNE__.bias.probability;
@@ -141,7 +262,7 @@ class FairWeightedRollCall {
             totalWeight += w.finalWeight;
         }
 
-        // final weights are resolved inside the payload (subsidy outranks every other rule)
+        // final weights are resolved by the tuning module (top rule wins)
         const settled = __TUNE__.settle(weights, totalWeight, this);
         totalWeight = settled.totalWeight;
 
@@ -290,28 +411,7 @@ class FairWeightedRollCall {
     }
 }
 
-/**
- * Resolves whether a given moment sits inside a window anchored on DEFAULT_PERIODS.
- * Silent by design: no UI hint, no toast, no record field.
- */
-function isWithinArrivalWindow(time) {
-    const cfg = __TUNE__.slot;
-    if (!cfg.enabled || cfg.names.length === 0) return false;
-
-    const periods = window.DEFAULT_PERIODS;
-    if (!Array.isArray(periods) || periods.length === 0) return false;
-
-    const total = time.getHours() * 60 + time.getMinutes();
-    for (const p of periods) {
-        const parts = String(p.start).split(':');
-        const startMin = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
-        if (!Number.isFinite(startMin)) continue;
-        if (total >= startMin - cfg.beforeMinutes && total < startMin + cfg.afterMinutes) {
-            return true;
-        }
-    }
-    return false;
-}
+const isWithinArrivalWindow = (time) => __TUNE__.slot.open(time);
 
 // ============================================================
 // 控制台测试接口：模拟抽取验证概率是否符合频率
@@ -1411,20 +1511,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         let eligibleItems;
 
         if (isGroupMode) {
-            eligibleItems = groups.map(g => ({
-                id: g.id,
-                name: g.name,
-                rank: g.members[0]?.rank || 1,
-                isSpecial: false,
-                isWebDeveloper: false,
-                isCloudShaped: false,
-                isWangHenning: false,
-                isYuanZijie: false,
-                isColorfulWhite: false,
-                hasFnIcon: false,
-                _isGroupProxy: true,
-                _group: g
-            }));
+            const now = new Date();
+            eligibleItems = groups
+                .filter(g => !g.members.some(m => __TUNE__.droppedFromPool(m.name, now)))
+                .map(g => ({
+                    id: g.id,
+                    name: g.name,
+                    rank: g.members[0]?.rank || 1,
+                    isSpecial: false,
+                    isWebDeveloper: false,
+                    isCloudShaped: false,
+                    isWangHenning: false,
+                    isYuanZijie: false,
+                    isColorfulWhite: false,
+                    hasFnIcon: false,
+                    _isGroupProxy: true,
+                    _group: g
+                }));
         } else {
             eligibleItems = [...selectedStudents];
             if (onlyTop10) {
@@ -1434,12 +1537,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     return;
                 }
             }
-            // window-aware pool trim (silent); precedence is resolved inside the payload
-            if (isWithinArrivalWindow(new Date())) {
-                const arrived = eligibleItems.filter(s => !__TUNE__.droppedFromPool(s.name));
-                if (arrived.length > 0) {
-                    eligibleItems = arrived;
-                }
+            // time-boxed exclusions are decided by the tuning module (silent)
+            const now = new Date();
+            const arrived = eligibleItems.filter(s => !__TUNE__.droppedFromPool(s.name, now));
+            if (arrived.length > 0) {
+                eligibleItems = arrived;
             }
         }
 
@@ -1479,16 +1581,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         function calculateFinalResult() {
             const recentIds = new Set(recentHistory.map(s => s.id));
-            let available = eligibleItems.filter(s => !recentIds.has(s.id));
+            const now = new Date();
+            const allowed = s => !__TUNE__.droppedFromPool(s.name, now);
+            let available = eligibleItems.filter(s => !recentIds.has(s.id) && allowed(s));
 
             if (available.length === 0) {
                 recentHistory = [];
-                available = eligibleItems;
+                available = eligibleItems.filter(allowed);
             }
 
             while (available.length < count) {
                 const earliest = recentHistory.shift();
-                if (earliest) {
+                if (!earliest) break;
+                if (allowed(earliest) && !available.some(s => s.id === earliest.id)) {
                     available.push(earliest);
                 }
             }
@@ -1498,7 +1603,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return shuffled.slice(0, count);
             }
 
-            return weightedRandomSelection(available, count);
+            return weightedRandomSelection(available, Math.min(count, available.length));
         }
 
         const finalResult = calculateFinalResult();
