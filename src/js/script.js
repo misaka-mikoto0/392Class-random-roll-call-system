@@ -69,7 +69,7 @@ const __TUNE__ = (() => {
 
     const gate = {
         get enabled() { return state.gate; },
-        until: new Date('2026-11-04T00:00:00').getTime(),
+        until: new Date('2026-11-04T12:00:00').getTime(),
         get names() { return roster(T.gate); },
         holds(name, time = new Date()) {
             return this.enabled && time.getTime() < this.until && this.names.includes(name);
