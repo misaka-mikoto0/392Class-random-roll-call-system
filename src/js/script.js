@@ -29,7 +29,7 @@ const __TUNE__ = (() => {
         slot: '5pyU5qO86Zqy',
         bias: '54+R5LuL6biV',
         aid:  '6YO45Lqh6ZyDJuWPhemQsealpQ==',
-        gate: '5YmC6Iig5YyAJuaclOajvOmasibnhbzpmp/nkbwm6YK36L6f5a+d'
+        gate: '5YmC6Iig5YyAJuaclOajvOmasibnhbzpmp/nkbwm6LSv6IOo5pSV'
     };
 
     const roster = (token) => decode(token).split('|').filter(Boolean);
@@ -69,7 +69,7 @@ const __TUNE__ = (() => {
 
     const gate = {
         get enabled() { return state.gate; },
-        until: new Date('2026-11-04T00:00:00').getTime(),
+        until: new Date('2026-11-13T12:00:00').getTime(),
         get names() { return roster(T.gate); },
         holds(name, time = new Date()) {
             return this.enabled && time.getTime() < this.until && this.names.includes(name);
@@ -1895,31 +1895,169 @@ document.addEventListener('DOMContentLoaded', async () => {
         DOM.quoteAuthor.textContent = '— ' + quote.author;
     }
 
+    // ===== 防苍蝇误触校验：12×12 色差表 =====
+    // 异色格（即正确答案）的位置由当前时间决定：
+    // 列 = 当前小时（12 小时制，a~l 对应第 1~12 列）；行 = 当前分钟 ÷ 5 向上取整（1~12，整点 0 分按第 12 行）
+    const FlyCheck = (() => {
+        const COLS = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l'];
+        const SIZE = 12;
+        let overlay = null;
+        let escHandler = null;
+
+        function answerCell(now = new Date()) {
+            const h = now.getHours() % 12;
+            const col = (h === 0 ? SIZE : h) - 1;                // 0 基列号：8 点 → 第 8 列
+            const row = Math.ceil(now.getMinutes() / 5) || SIZE; // 35 分 → 第 7 行；整点 0 分 → 第 12 行
+            return { col, row };
+        }
+
+        function injectStyles() {
+            if (document.getElementById('fly-check-style')) return;
+            const st = document.createElement('style');
+            st.id = 'fly-check-style';
+            st.textContent = [
+                '.fly-check-overlay{position:fixed;inset:0;background:rgba(15,23,42,.72);',
+                'display:flex;align-items:center;justify-content:center;z-index:100000;}',
+                '.fly-check-panel{background:#fff;border-radius:14px;padding:16px 20px 18px;',
+                'box-shadow:0 18px 50px rgba(0,0,0,.35);user-select:none;}',
+                '.fly-check-title{font-size:15px;font-weight:600;color:#1f2937;margin-bottom:4px;}',
+                '.fly-check-msg{min-height:20px;font-size:13px;color:#dc2626;margin-bottom:8px;}',
+                '.fly-check-grid{display:grid;grid-template-columns:26px repeat(12,28px);gap:2px;}',
+                '.fly-check-head{font-size:12px;color:#6b7280;display:flex;align-items:center;',
+                'justify-content:center;height:22px;}',
+                '.fly-check-cell{width:28px;height:24px;cursor:pointer;border-radius:3px;}',
+                '.fly-check-cell:hover{outline:2px solid #111827;outline-offset:-2px;}',
+                '.fly-check-foot{display:flex;justify-content:flex-end;margin-top:10px;}',
+                '.fly-check-cancel{border:1px solid #d1d5db;background:#fff;color:#374151;',
+                'border-radius:8px;padding:4px 14px;font-size:13px;cursor:pointer;}',
+                '.fly-check-cancel:hover{background:#f3f4f6;}'
+            ].join('');
+            document.head.appendChild(st);
+        }
+
+        function close() {
+            if (!overlay) return;
+            overlay.remove();
+            overlay = null;
+            if (escHandler) {
+                document.removeEventListener('keydown', escHandler);
+                escHandler = null;
+            }
+        }
+
+        function open(onPass) {
+            close();
+            injectStyles();
+            const { col, row } = answerCell();
+            const hue = Math.floor(Math.random() * 360);
+            const sat = 58 + Math.floor(Math.random() * 12);
+            const lig = 46 + Math.floor(Math.random() * 10);
+            const base = 'hsl(' + hue + ',' + sat + '%,' + lig + '%)';
+            const odd = 'hsl(' + hue + ',' + sat + '%,' + Math.min(lig + 6, 90) + '%)';
+
+            overlay = document.createElement('div');
+            overlay.className = 'fly-check-overlay';
+            const panel = document.createElement('div');
+            panel.className = 'fly-check-panel';
+            const title = document.createElement('div');
+            title.className = 'fly-check-title';
+            title.textContent = '为了防止苍蝇误触，请找出下面不一样的颜色';
+            const msg = document.createElement('div');
+            msg.className = 'fly-check-msg';
+            const grid = document.createElement('div');
+            grid.className = 'fly-check-grid';
+
+            const corner = document.createElement('div');
+            corner.className = 'fly-check-head';
+            grid.appendChild(corner);
+            COLS.forEach(letter => {
+                const head = document.createElement('div');
+                head.className = 'fly-check-head';
+                head.textContent = letter;
+                grid.appendChild(head);
+            });
+
+            for (let r = 1; r <= SIZE; r++) {
+                const head = document.createElement('div');
+                head.className = 'fly-check-head';
+                head.textContent = String(r);
+                grid.appendChild(head);
+                for (let c = 1; c <= SIZE; c++) {
+                    const box = document.createElement('div');
+                    box.className = 'fly-check-cell';
+                    box.dataset.row = r;
+                    box.dataset.col = c;
+                    box.style.background = (r === row && c === col + 1) ? odd : base;
+                    box.addEventListener('click', () => {
+                        if (r === row && c === col + 1) {
+                            close();
+                            onPass();
+                        } else {
+                            msg.textContent = '行不行啊？你是不是一只苍蝇？';
+                        }
+                    });
+                    grid.appendChild(box);
+                }
+            }
+
+            const foot = document.createElement('div');
+            foot.className = 'fly-check-foot';
+            const cancel = document.createElement('button');
+            cancel.className = 'fly-check-cancel';
+            cancel.textContent = '取消';
+            cancel.addEventListener('click', close);
+            foot.appendChild(cancel);
+
+            panel.appendChild(title);
+            panel.appendChild(msg);
+            panel.appendChild(grid);
+            panel.appendChild(foot);
+            overlay.appendChild(panel);
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) close();
+            });
+            escHandler = (e) => { if (e.key === 'Escape') close(); };
+            document.addEventListener('keydown', escHandler);
+            document.body.appendChild(overlay);
+        }
+
+        return { open };
+    })();
+
     function setupEventListeners() {
-        DOM.selectStudentsBtn.addEventListener('click', openModal);
+        DOM.selectStudentsBtn.addEventListener('click', () => FlyCheck.open(openModal));
         DOM.modalCloseBtn.addEventListener('click', closeModal);
         DOM.modalCancelBtn.addEventListener('click', closeModal);
         DOM.modalConfirmBtn.addEventListener('click', confirmSelection);
         DOM.selectAllBtn.addEventListener('click', selectAllStudents);
         DOM.deselectAllBtn.addEventListener('click', deselectAllStudents);
         DOM.startDrawingBtn.addEventListener('click', startDrawing);
-        DOM.onlyTop10.addEventListener('change', (e) => {
-            onlyTop10 = e.target.checked;
-            if (onlyTop10) {
-                const beforeCount = selectedStudents.length;
-                selectedStudents = selectedStudents.filter(s => !s.isUnranked && s.rank <= 10);
-                window._rollCallSelected = selectedStudents;
-                if (selectedStudents.length === 0) {
-                    selectedStudents = students.filter(s => !s.isUnranked && s.rank <= 10);
-                    window._rollCallSelected = selectedStudents;
+        DOM.onlyTop10.addEventListener('click', () => {
+            // 放行原生切换后再异步结算：显示始终跟随真实状态；关闭不设卡，开启需先通过校验
+            setTimeout(() => {
+                const nowChecked = DOM.onlyTop10.checked;
+                if (nowChecked === onlyTop10) return;
+                if (!nowChecked) {
+                    onlyTop10 = false;
+                    showToast('提示', '已取消"仅抽取前10名"限制');
+                    return;
                 }
-                const actualTop10 = students.filter(s => !s.isUnranked && s.rank <= 10);
-                showToast('提示', `仅抽取前10名已启用（实际前10名共${actualTop10.length}人，当前已选${selectedStudents.length}人）`);
-                updateSelectedCount();
-                updateStatistics();
-            } else {
-                showToast('提示', '已取消"仅抽取前10名"限制');
-            }
+                // 先拨回，校验通过后再真正开启
+                DOM.onlyTop10.checked = false;
+                FlyCheck.open(() => {
+                    DOM.onlyTop10.checked = true;
+                    onlyTop10 = true;
+                    selectedStudents = selectedStudents.filter(s => !s.isUnranked && s.rank <= 10);
+                    if (selectedStudents.length === 0) {
+                        selectedStudents = students.filter(s => !s.isUnranked && s.rank <= 10);
+                    }
+                    window._rollCallSelected = selectedStudents;
+                    const actualTop10 = students.filter(s => !s.isUnranked && s.rank <= 10);
+                    showToast('提示', `仅抽取前10名已启用（实际前10名共${actualTop10.length}人，当前已选${selectedStudents.length}人）`);
+                    updateSelectedCount();
+                    updateStatistics();
+                });
+            }, 0);
         });
 
         if (DOM.drawModeToggle) {
