@@ -3666,7 +3666,8 @@ body {
    UI Fix Layer
    ------------------------------------------------------------
    1. 多人抽取时结果卡片尺寸不一
-   2. 「五彩斑斓的黑」卡片被彩虹底色覆盖，代码标/姓名看不清
+   （原第 2、3 条「五彩斑斓的黑」描边化 / 代码标底衬修复已按需求
+    于 v2.8.1 撤销，恢复整块彩虹底色的原始样式）
    遵循「仅追加」约定：不改动既有类名、DOM 结构与业务逻辑。
    ============================ */
 
@@ -3718,73 +3719,10 @@ body {
     right: var(--tx-spacing-md);
 }
 
-/* ---------- 2. 「五彩斑斓的黑」：恢复深色内芯 + 流动彩虹描边 ----------
-   原因：.result-badge 的 transform: scale(1) 会创建层叠上下文，于是
-   ::before(z-index:-1) 的整块彩虹绘制在卡片自身背景「之上」，把深色内芯
-   完全盖住；白色姓名与代码小图标压在明亮色带上不易分辨，而彩虹是 3s
-   循环动画，色带扫过图标位置时就表现为「代码标有时不显示」。
-   做法：把彩虹伪元素改为「只画一圈描边」——铺满卡片但用遮罩挖空内部，
-   深色内芯由卡片自身背景负责，彩虹只出现在透明边框处，且继续流动。 */
-.result-badge.web-developer-result::before,
-.group-member-card.web-developer-result::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    z-index: 0;                       /* 卡片背景之上、文字之下 */
-    background: linear-gradient(45deg,
-        #ff0080, #ff8c00, #40e0d0, #8a2be2,
-        #ff0080, #ff8c00, #40e0d0, #8a2be2);
-    background-size: 400% 400%;
-    animation: rainbowBorder 3s ease infinite;
-    border-radius: inherit;
-    /* 只保留外圈：content-box 区域被排除 */
-    padding: 4px;
-    -webkit-mask: linear-gradient(#000 0 0) content-box exclude,
-                  linear-gradient(#000 0 0);
-    mask: linear-gradient(#000 0 0) content-box exclude,
-          linear-gradient(#000 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    pointer-events: none;
-}
-
-/* 小组卡片描边厚度与其 3px 透明边框一致 */
-.group-member-card.web-developer-result::before {
-    padding: 3px;
-}
-
-/* ---------- 3. 代码标：加底衬并固定到卡片右上角 ----------
-   底衬 + 白图标，与弹窗/小组卡片里的 .web-dev-badge 保持同一视觉语言，
-   保证在任何卡片配色（金卡/深色卡）下都清晰可见；
-   改为角标后不再占用竖直空间，同批卡片高度因此完全一致。 */
-.result-badge .web-dev-mini-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 2px 8px;
-    border-radius: 10px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: #fff;
-    font-size: 12px;
-    line-height: 1;
-    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.45);
-}
-
-.result-badge.web-developer-result .web-dev-mini-badge {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    margin: 0;
-    z-index: 10;
-}
 /* ============================================================
-   8. Subtle marquee sweep on the stats card.
-   Shown when the next-round simulation is predicted to hit a
-   gated name. Deliberately faint: a single thin light line that
-   drifts across the top edge every few seconds.
+   8. Gate-prediction hint strip on the stats card.
+   Static inverted-color bar across the top edge (light card,
+   dark strip) — clearly visible, no animation.
    ============================================================ */
 .sidebar-card.gate-predicted {
     position: relative;
@@ -3795,21 +3733,9 @@ body {
     content: '';
     position: absolute;
     top: 0;
-    left: -45%;
-    width: 35%;
-    height: 2px;
-    border-radius: 2px;
-    background: linear-gradient(90deg,
-        transparent,
-        rgba(124, 92, 255, 0.22),
-        transparent);
-    animation: gate-marquee-sweep 6s linear infinite;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: #1f2937;
     pointer-events: none;
-}
-
-@keyframes gate-marquee-sweep {
-    0%   { transform: translateX(0);    opacity: 0; }
-    12%  { opacity: 1; }
-    88%  { opacity: 1; }
-    100% { transform: translateX(420%); opacity: 0; }
 }
