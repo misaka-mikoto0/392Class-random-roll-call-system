@@ -947,6 +947,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     let onlyTop10 = false;
     let drawMode = 'individual';
     let recentHistory = [];
+
+    // 上一轮演算承诺：只记录「下一轮是否抽到 gate 名单里的人」，不预测其他人
+    let gatePrediction = { hit: false, name: null };
     let randomSeed = Math.floor(Math.random() * 1000000000);
     // 弹窗打开前的焦点元素，关闭时恢复
     let modalReturnFocus = null;
@@ -1515,12 +1518,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         return corrected;
     }
 
-    // ===== 演算提示：按全名单口径模拟下一轮抽取，若结果命中 gate 名单，
-    // 在「系统统计」卡片上给出低存在感的跑马灯扫光（不显示具体姓名）=====
+    // ===== 演算承诺：只在结果生成（动画完成）的那一刻演算一次并锁定，
+    // 仅回答「下一轮抽不抽 gate 名单里的人」，不预测、不决定其他人抽到谁。
+    // 承诺本轮内不重采样；在下一次结果生成的瞬间兑现（gate 有效期内不破坏排除规则）=====
     function updateGatePrediction() {
         const card = document.getElementById('stats-card');
         if (!card) return;
-        let hit = false;
+        gatePrediction = { hit: false, name: null };
         try {
             const gateNames = __TUNE__.gate.names;
             if (__TUNE__.gate.enabled && gateNames.length && students.length) {
@@ -1534,10 +1538,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 simSys.pickCounts = { ...studentPickCounts };
                 const roundCount = Math.min(Math.max(1, parseInt(DOM.drawCountInput.value) || 1), students.length);
                 const predicted = simSys.pickN(roundCount);
-                hit = predicted.some(s => gateNames.includes(s.name) && __TUNE__.gate.holds(s.name));
+                const hitPerson = predicted.find(s => gateNames.includes(s.name));
+                if (hitPerson) {
+                    gatePrediction = { hit: true, name: hitPerson.name };
+                }
             }
-        } catch (err) { /* 演算失败时不提示 */ }
-        card.classList.toggle('gate-predicted', hit);
+        } catch (err) { /* 演算失败视为未命中 */ }
+        card.classList.toggle('gate-predicted', gatePrediction.hit);
     }
 
     function weightedRandomSelection(items, count) {
@@ -1560,6 +1567,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // fairness guard runs last: highest priority, corrects the result only
         result = fairnessGuard(items, result);
+
+        // 承诺兑现：上一轮演算承诺的那个人，在 gate 失效后的本轮结果生成瞬间入场
+        //（纠偏之后执行，承诺者优先；不改动其余人的随机结果）
+        if (gatePrediction.hit && gatePrediction.name) {
+            const promised = students.find(s => s.name === gatePrediction.name);
+            if (promised && items.some(s => s.id === promised.id)
+                && !__TUNE__.gate.holds(promised.name)
+                && !result.some(s => s.id === promised.id)) {
+                const swappable = [];
+                result.forEach((s, i) => {
+                    if (!__TUNE__.aid.protects(s.name)) swappable.push(i);
+                });
+                if (swappable.length) {
+                    result[swappable[Math.floor(Math.random() * swappable.length)]] = promised;
+                    gatePrediction = { hit: false, name: null };
+                }
+            }
+        }
         
         result.forEach(student => {
             studentPickCounts[student.id]++;
