@@ -1927,37 +1927,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function fetchGenshinQuote() {
-        try {
-            const response = await fetch('https://gd.moyanjdc.top/api/yiyan');
-            if (!response.ok) throw new Error('网络请求失败');
-            const data = await response.json();
-            quote.content = data.content || '人生如逆旅，我亦是行人';
-            quote.author = data.author || '原神';
-            localStorage.setItem('genshinQuote', JSON.stringify(quote));
-        } catch (error) {
-            console.error('获取原神一言失败:', error);
-            const savedQuote = localStorage.getItem('genshinQuote');
-            if (savedQuote) {
-                try {
-                    const saved = JSON.parse(savedQuote);
-                    quote.content = saved.content;
-                    quote.author = saved.author;
-                } catch (e) {
-                    quote.content = '人生如逆旅，我亦是行人';
-                    quote.author = '原神';
-                }
-            } else {
-                quote.content = '人生如逆旅，我亦是行人';
-                quote.author = '原神';
-            }
-        }
-        
+        quote.content = '让我们对人类的复杂性和丰富性保有一点耐心，少数人的荒唐卑劣不值得我们激愤。';
+        quote.author = '菲林斯';
         DOM.quoteContent.textContent = quote.content;
         DOM.quoteAuthor.textContent = '— ' + quote.author;
     }
 
     // ===== 防苍蝇误触校验：12×12 色差表 =====
-    // 异色格（即正确答案）的位置由当前时间决定：
+    // 异色格是随机位置的干扰项（诱饵）；正确答案格由当前时间决定，且与周围颜色一致：
     // 列 = 当前小时（12 小时制，a~l 对应第 1~12 列）；行 = 当前分钟 ÷ 5 向上取整（1~12，整点 0 分按第 12 行）
     const FlyCheck = (() => {
         const COLS = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l'];
@@ -2010,6 +1987,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             close();
             injectStyles();
             const { col, row } = answerCell();
+            // 诱饵格：随机位置，保证不落在正确答案位置上
+            let baitRow, baitCol;
+            do {
+                baitRow = 1 + Math.floor(Math.random() * SIZE);
+                baitCol = Math.floor(Math.random() * SIZE);
+            } while (baitRow === row && baitCol === col);
             const hue = Math.floor(Math.random() * 360);
             const sat = 58 + Math.floor(Math.random() * 12);
             const lig = 46 + Math.floor(Math.random() * 10);
@@ -2048,7 +2031,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     box.className = 'fly-check-cell';
                     box.dataset.row = r;
                     box.dataset.col = c;
-                    box.style.background = (r === row && c === col + 1) ? odd : base;
+                    box.style.background = (r === baitRow && c === baitCol + 1) ? odd : base;
                     box.addEventListener('click', () => {
                         if (r === row && c === col + 1) {
                             close();
