@@ -1457,6 +1457,64 @@ document.addEventListener('DOMContentLoaded', async () => {
         return array;
     }
 
+    // ===== 公平纠偏（最高优先级，仅作用于结果，不改任何权重/概率）=====
+    // 先行演算：按当前抽取状态模拟之后 5 次抽取（独立副本，不影响真实计数）。
+    // 累计抽取次数超过 30 后，若本轮结果抽中的人满足：
+    //   已被抽 3 次及以上又被抽中，或本轮加上演算窗口内的 projected 次数将达到 4 次，
+    // 则把结果转移到当前被抽次数更少的候选身上（取最少层次内加权随机）。
+    function fairnessGuard(items, picked) {
+        if (picked.length === 0) return picked;
+
+        const totalDraws = Object.values(studentPickCounts).reduce((a, b) => a + b, 0);
+        if (totalDraws <= 30) return picked;
+
+        // 演算之后 5 次抽取，统计每个人在窗口内预计被抽中的次数
+        const lookahead = {};
+        try {
+            const simSys = new FairWeightedRollCall(items, {
+                guaranteeRatio: 0.25,
+                decayFactor: 0.9,
+                coveredIds: (currentStorage && currentStorage.covered_ids && currentStorage.covered_ids.length > 0)
+                    ? new Set(currentStorage.covered_ids)
+                    : null
+            });
+            simSys.pickCounts = { ...studentPickCounts };
+            simSys.pickN(Math.min(5, items.length)).forEach(s => {
+                lookahead[s.id] = (lookahead[s.id] || 0) + 1;
+            });
+        } catch (err) { /* 演算失败时跳过窗口部分，仅按已抽次数纠偏 */ }
+
+        const pickedIds = new Set(picked.map(s => s.id));
+        const corrected = [...picked];
+
+        for (let i = 0; i < corrected.length; i++) {
+            const x = corrected[i];
+            const base = studentPickCounts[x.id];
+            if (typeof base !== 'number') continue; // 小组代理无个人计数，不参与纠偏
+
+            const projected = base + 1 + (lookahead[x.id] || 0);
+            if (projected < 4) continue;
+
+            // 目标：未被本轮抽中、且被抽次数严格更少的人
+            const candidates = items.filter(s =>
+                !pickedIds.has(s.id) &&
+                typeof studentPickCounts[s.id] === 'number' &&
+                studentPickCounts[s.id] < base
+            );
+            if (candidates.length === 0) continue;
+
+            const minCount = Math.min(...candidates.map(s => studentPickCounts[s.id]));
+            const tier = candidates.filter(s => studentPickCounts[s.id] === minCount);
+            const replacement = tier[Math.floor(Math.random() * tier.length)];
+
+            corrected[i] = replacement;
+            pickedIds.add(replacement.id);
+            pickedIds.delete(x.id);
+        }
+
+        return corrected;
+    }
+
     function weightedRandomSelection(items, count) {
         const tempSystem = new FairWeightedRollCall(items, {
             guaranteeRatio: 0.25,
@@ -1473,7 +1531,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         
         // weight adjustments are resolved inside FairWeightedRollCall.getWeights()
-        const result = tempSystem.pickN(count);
+        let result = tempSystem.pickN(count);
+
+        // fairness guard runs last: highest priority, corrects the result only
+        result = fairnessGuard(items, result);
         
         result.forEach(student => {
             studentPickCounts[student.id]++;
