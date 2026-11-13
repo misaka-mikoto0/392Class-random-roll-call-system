@@ -3720,22 +3720,12 @@ body {
 }
 
 /* ============================================================
-   8. Gate-prediction hint strip on the stats card.
-   Static inverted-color bar across the top edge (light card,
-   dark strip) — clearly visible, no animation.
+   8. Gate-prediction hint on the stats card.
+   When the next-round simulation is predicted to hit a gated
+   name, the「学生参与比例」progress bar and its label swap
+   positions (column-reverse) — obvious yet unobtrusive.
    ============================================================ */
-.sidebar-card.gate-predicted {
-    position: relative;
-    overflow: hidden;
-}
-
-.sidebar-card.gate-predicted::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: #1f2937;
-    pointer-events: none;
+.sidebar-card.gate-predicted .progress-container {
+    display: flex;
+    flex-direction: column-reverse;
 }
