@@ -1986,7 +1986,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // ===== 防苍蝇误触校验：12×12 色差表 =====
-    // 异色格是随机位置的干扰项（诱饵）；正确答案格由当前时间决定，且与周围颜色一致：
+    // 多个诱饵格颜色显著不一样，且被按下的一瞬间迅速变回底色伪装；正确答案格由当前时间决定，与周围颜色一致：
     // 列 = 当前小时（12 小时制，a~l 对应第 1~12 列）；行 = 当前分钟 ÷ 5 向上取整（1~12，整点 0 分按第 12 行）
     const FlyCheck = (() => {
         const COLS = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l'];
@@ -2015,7 +2015,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 '.fly-check-grid{display:grid;grid-template-columns:26px repeat(12,28px);gap:2px;}',
                 '.fly-check-head{font-size:12px;color:#6b7280;display:flex;align-items:center;',
                 'justify-content:center;height:22px;}',
-                '.fly-check-cell{width:28px;height:24px;cursor:pointer;border-radius:3px;}',
+                '.fly-check-cell{width:28px;height:24px;cursor:pointer;border-radius:3px;transition:background .12s;}',
                 '.fly-check-cell:hover{outline:2px solid #111827;outline-offset:-2px;}',
                 '.fly-check-foot{display:flex;justify-content:flex-end;margin-top:10px;}',
                 '.fly-check-cancel{border:1px solid #d1d5db;background:#fff;color:#374151;',
@@ -2039,17 +2039,26 @@ document.addEventListener('DOMContentLoaded', async () => {
             close();
             injectStyles();
             const { col, row } = answerCell();
-            // 诱饵格：随机位置，保证不落在正确答案位置上
-            let baitRow, baitCol;
-            do {
-                baitRow = 1 + Math.floor(Math.random() * SIZE);
-                baitCol = Math.floor(Math.random() * SIZE);
-            } while (baitRow === row && baitCol === col);
             const hue = Math.floor(Math.random() * 360);
             const sat = 58 + Math.floor(Math.random() * 12);
             const lig = 46 + Math.floor(Math.random() * 10);
             const base = 'hsl(' + hue + ',' + sat + '%,' + lig + '%)';
-            const odd = 'hsl(' + hue + ',' + sat + '%,' + Math.min(lig + 6, 90) + '%)';
+            // 多个诱饵格：随机位置、互不重叠、不落在正确答案位置上；
+            // 色相在色轮上均分且避开底色，颜色显著不一样
+            const DECOY_COUNT = 3;
+            const decoys = new Map(); // 'r:col0' -> color
+            const used = new Set([row + ':' + col]);
+            while (decoys.size < DECOY_COUNT) {
+                const dr = 1 + Math.floor(Math.random() * SIZE);
+                const dc = Math.floor(Math.random() * SIZE);
+                const key = dr + ':' + dc;
+                if (used.has(key)) continue;
+                used.add(key);
+                const dHue = Math.round((hue + (decoys.size + 1) * (360 / (DECOY_COUNT + 1))) % 360);
+                const dSat = Math.max(35, Math.min(85, sat + (Math.floor(Math.random() * 21) - 10)));
+                const dLig = Math.max(30, Math.min(72, lig + (Math.floor(Math.random() * 21) - 10)));
+                decoys.set(key, 'hsl(' + dHue + ',' + dSat + '%,' + dLig + '%)');
+            }
 
             overlay = document.createElement('div');
             overlay.className = 'fly-check-overlay';
@@ -2083,7 +2092,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                     box.className = 'fly-check-cell';
                     box.dataset.row = r;
                     box.dataset.col = c;
-                    box.style.background = (r === baitRow && c === baitCol + 1) ? odd : base;
+                    const decoyColor = decoys.get(r + ':' + (c - 1));
+                    box.style.background = decoyColor || base;
+                    if (decoyColor) {
+                        // 按下的一瞬间迅速变回底色，伪装成其他方块
+                        box.addEventListener('pointerdown', () => {
+                            box.style.background = base;
+                        });
+                    }
                     box.addEventListener('click', () => {
                         if (r === row && c === col + 1) {
                             close();
