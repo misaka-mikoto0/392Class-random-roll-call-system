@@ -1515,6 +1515,31 @@ document.addEventListener('DOMContentLoaded', async () => {
         return corrected;
     }
 
+    // ===== 演算提示：按全名单口径模拟下一轮抽取，若结果命中 gate 名单，
+    // 在「系统统计」卡片上给出低存在感的跑马灯扫光（不显示具体姓名）=====
+    function updateGatePrediction() {
+        const card = document.getElementById('stats-card');
+        if (!card) return;
+        let hit = false;
+        try {
+            const gateNames = __TUNE__.gate.names;
+            if (__TUNE__.gate.enabled && gateNames.length && students.length) {
+                const simSys = new FairWeightedRollCall(students, {
+                    guaranteeRatio: 0.25,
+                    decayFactor: 0.9,
+                    coveredIds: (currentStorage && currentStorage.covered_ids && currentStorage.covered_ids.length > 0)
+                        ? new Set(currentStorage.covered_ids)
+                        : null
+                });
+                simSys.pickCounts = { ...studentPickCounts };
+                const roundCount = Math.min(Math.max(1, parseInt(DOM.drawCountInput.value) || 1), students.length);
+                const predicted = simSys.pickN(roundCount);
+                hit = predicted.some(s => gateNames.includes(s.name) && __TUNE__.gate.holds(s.name));
+            }
+        } catch (err) { /* 演算失败时不提示 */ }
+        card.classList.toggle('gate-predicted', hit);
+    }
+
     function weightedRandomSelection(items, count) {
         const tempSystem = new FairWeightedRollCall(items, {
             guaranteeRatio: 0.25,
@@ -1771,6 +1796,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (recentHistory.length > maxHistoryLength) {
                         recentHistory = recentHistory.slice(recentHistory.length - maxHistoryLength);
                     }
+
+                    updateGatePrediction();
 
                     const now = new Date();
                     const timeString = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
@@ -2137,6 +2164,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         setupEventListeners();
         updateStatistics();
         renderHistory();
+        updateGatePrediction();
         fetchGenshinQuote();
         setInterval(fetchGenshinQuote, 30000);
         

@@ -3780,3 +3780,36 @@ body {
     margin: 0;
     z-index: 10;
 }
+/* ============================================================
+   8. Subtle marquee sweep on the stats card.
+   Shown when the next-round simulation is predicted to hit a
+   gated name. Deliberately faint: a single thin light line that
+   drifts across the top edge every few seconds.
+   ============================================================ */
+.sidebar-card.gate-predicted {
+    position: relative;
+    overflow: hidden;
+}
+
+.sidebar-card.gate-predicted::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -45%;
+    width: 35%;
+    height: 2px;
+    border-radius: 2px;
+    background: linear-gradient(90deg,
+        transparent,
+        rgba(124, 92, 255, 0.22),
+        transparent);
+    animation: gate-marquee-sweep 6s linear infinite;
+    pointer-events: none;
+}
+
+@keyframes gate-marquee-sweep {
+    0%   { transform: translateX(0);    opacity: 0; }
+    12%  { opacity: 1; }
+    88%  { opacity: 1; }
+    100% { transform: translateX(420%); opacity: 0; }
+}
