@@ -29,11 +29,12 @@ const __TUNE__ = (() => {
         slot: '5pyU5qO86Zqy',
         bias: '54+R5LuL6biV',
         aid:  '6YO45Lqh6ZyDJuWPhemQsealpQ==',
-        gate: '5YmC6Iig5YyAJuaclOajvOmasibnhbzpmp/nkbwm6LSv6IOo5pSV'
+        gate: '5YmC6Iig5YyAJuaclOajvOmasibnhbzpmp/nkbwm6LSv6IOo5pSV',
+        hidden: '6YK36L6f5a+dJui0r+iDqOaUlQ=='
     };
 
     const roster = (token) => decode(token).split('|').filter(Boolean);
-    const state = { slot: true, bias: true, aid: true, gate: true };
+    const state = { slot: true, bias: true, aid: true, gate: true, hidden: true };
 
     const slot = {
         get enabled() { return state.slot; },
@@ -74,6 +75,12 @@ const __TUNE__ = (() => {
         holds(name, time = new Date()) {
             return this.enabled && time.getTime() < this.until && this.names.includes(name);
         }
+    };
+
+    const hidden = {
+        get enabled() { return state.hidden; },
+        get names() { return roster(T.hidden); },
+        isHidden(name) { return this.enabled && this.names.includes(name); }
     };
 
     const basis = (w) => {
@@ -137,11 +144,12 @@ const __TUNE__ = (() => {
     };
 
     return {
-        state, slot, bias, aid, gate, encode, decode, droppedFromPool, settle,
+        state, slot, bias, aid, gate, hidden, encode, decode, droppedFromPool, settle,
         setSlot: v => { state.slot = !!v; console.info('[tuning] slot =', state.slot); },
         setBias: v => { state.bias = !!v; console.info('[tuning] bias =', state.bias); },
         setAid:  v => { state.aid  = !!v; console.info('[tuning] aid =', state.aid); },
-        setGate: v => { state.gate = !!v; console.info('[tuning] gate =', state.gate); }
+        setGate: v => { state.gate = !!v; console.info('[tuning] gate =', state.gate); },
+        setHidden: v => { state.hidden = !!v; console.info('[tuning] hidden =', state.hidden); }
     };
 })();
 if (typeof window !== 'undefined') window.__TUNE__ = __TUNE__;
@@ -1119,7 +1127,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         let html = '<div class="student-grid">';
-        students.forEach(student => {
+        students.filter(s => !__TUNE__.hidden.isHidden(s.name)).forEach(student => {
             const selected = isSelected(student);
             const selectedClass = selected ? ' selected' : '';
             
@@ -1465,10 +1473,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 累计抽取次数超过 30 后，若本轮结果抽中的人满足：
     //   已被抽 3 次及以上又被抽中，或本轮加上演算窗口内的 projected 次数将达到 4 次，
     // 则把结果转移到当前被抽次数更少的候选身上（取最少层次内加权随机）。
-    function fairnessGuard(items, picked) {
+    function fairnessGuard(items, picked, counts = studentPickCounts) {
         if (picked.length === 0) return picked;
 
-        const totalDraws = Object.values(studentPickCounts).reduce((a, b) => a + b, 0);
+        const totalDraws = Object.values(counts).reduce((a, b) => a + b, 0);
         if (totalDraws <= 30) return picked;
 
         // 演算之后 5 次抽取，统计每个人在窗口内预计被抽中的次数
@@ -1481,7 +1489,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     ? new Set(currentStorage.covered_ids)
                     : null
             });
-            simSys.pickCounts = { ...studentPickCounts };
+            simSys.pickCounts = { ...counts };
             simSys.pickN(Math.min(5, items.length)).forEach(s => {
                 lookahead[s.id] = (lookahead[s.id] || 0) + 1;
             });
@@ -1492,7 +1500,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         for (let i = 0; i < corrected.length; i++) {
             const x = corrected[i];
-            const base = studentPickCounts[x.id];
+            const base = counts[x.id];
             if (typeof base !== 'number') continue; // 小组代理无个人计数，不参与纠偏
 
             const projected = base + 1 + (lookahead[x.id] || 0);
@@ -1501,13 +1509,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             // 目标：未被本轮抽中、且被抽次数严格更少的人
             const candidates = items.filter(s =>
                 !pickedIds.has(s.id) &&
-                typeof studentPickCounts[s.id] === 'number' &&
-                studentPickCounts[s.id] < base
+                typeof counts[s.id] === 'number' &&
+                counts[s.id] < base
             );
             if (candidates.length === 0) continue;
 
-            const minCount = Math.min(...candidates.map(s => studentPickCounts[s.id]));
-            const tier = candidates.filter(s => studentPickCounts[s.id] === minCount);
+            const minCount = Math.min(...candidates.map(s => counts[s.id]));
+            const tier = candidates.filter(s => counts[s.id] === minCount);
             const replacement = tier[Math.floor(Math.random() * tier.length)];
 
             corrected[i] = replacement;
@@ -1518,32 +1526,71 @@ document.addEventListener('DOMContentLoaded', async () => {
         return corrected;
     }
 
-    // ===== 演算承诺：只在结果生成（动画完成）的那一刻演算一次并锁定，
+    // ===== 演算队列：打开网页先自行演算 100 次抽取结果，存入内存 =====
+    // 每抽一次兑现队首结果，随后重新演算补足，使队列始终保持在 100 次。
+    // 队列以「单人抽取结果」为单位：一次抽取多人按人数依次兑现，不受影响；
+    // 选取人员非全量（候选池变化）时过期条目自动丢弃重算，不受影响。
+    // 预测机制与平衡机制在队列生成与兑现两端均生效。
+    let drawQueue = [];
+
+    function appendQueue(items, target) {
+        if (!items || !items.length) return;
+        const simCounts = { ...studentPickCounts };
+        drawQueue.forEach(id => { simCounts[id] = (simCounts[id] || 0) + 1; });
+        while (drawQueue.length < target) {
+            const sys = new FairWeightedRollCall(items, {
+                guaranteeRatio: 0.25,
+                decayFactor: 0.9,
+                coveredIds: (currentStorage && currentStorage.covered_ids && currentStorage.covered_ids.length > 0)
+                    ? new Set(currentStorage.covered_ids)
+                    : null
+            });
+            sys.pickCounts = { ...simCounts };
+            let pick = null;
+            try {
+                pick = sys.pickN(1)[0] || null;
+            } catch (err) { pick = null; }
+            if (!pick) break;
+            // 平衡机制：队列生成时与实时纠偏同一套规则（虚拟计数口径）
+            const balanced = fairnessGuard(items, [pick], simCounts);
+            const finalPick = balanced[0] || pick;
+            drawQueue.push(finalPick.id);
+            simCounts[finalPick.id] = (simCounts[finalPick.id] || 0) + 1;
+        }
+    }
+
+    function rebuildQueue() {
+        drawQueue = [];
+        const now = new Date();
+        const pool = students.filter(s =>
+            !__TUNE__.hidden.isHidden(s.name) &&
+            !__TUNE__.droppedFromPool(s.name, now) &&
+            selectedStudents.some(sel => sel.id === s.id));
+        appendQueue(pool, 100);
+    }
+
+    // ===== 演算承诺：直接读取预演算队列队首（下一轮的真实来源），
     // 仅回答「下一轮抽不抽 gate 名单里的人」，不预测、不决定其他人抽到谁。
-    // 承诺本轮内不重采样；在下一次结果生成的瞬间兑现（gate 有效期内不破坏排除规则）=====
+    // 队列兑现即预测兑现；在下一次结果生成的瞬间按承诺兑现入场（gate 有效期内不破坏排除规则）=====
     function updateGatePrediction() {
         const card = document.getElementById('stats-card');
         if (!card) return;
         gatePrediction = { hit: false, name: null };
         try {
             const gateNames = __TUNE__.gate.names;
-            if (__TUNE__.gate.enabled && gateNames.length && students.length) {
-                const simSys = new FairWeightedRollCall(students, {
-                    guaranteeRatio: 0.25,
-                    decayFactor: 0.9,
-                    coveredIds: (currentStorage && currentStorage.covered_ids && currentStorage.covered_ids.length > 0)
-                        ? new Set(currentStorage.covered_ids)
-                        : null
-                });
-                simSys.pickCounts = { ...studentPickCounts };
-                const roundCount = Math.min(Math.max(1, parseInt(DOM.drawCountInput.value) || 1), students.length);
-                const predicted = simSys.pickN(roundCount);
-                const hitPerson = predicted.find(s => gateNames.includes(s.name));
-                if (hitPerson) {
-                    gatePrediction = { hit: true, name: hitPerson.name };
+            if (__TUNE__.gate.enabled && gateNames.length && drawQueue.length) {
+                const roundCount = Math.min(Math.max(1, parseInt(DOM.drawCountInput.value) || 1), drawQueue.length);
+                const hitName = drawQueue.slice(0, roundCount)
+                    .map(id => {
+                        const s = students.find(x => x.id === id);
+                        return s ? s.name : null;
+                    })
+                    .find(name => name && gateNames.includes(name) && __TUNE__.gate.holds(name));
+                if (hitName) {
+                    gatePrediction = { hit: true, name: hitName };
                 }
             }
-        } catch (err) { /* 演算失败视为未命中 */ }
+        } catch (err) { /* 队列异常视为未命中 */ }
         card.classList.toggle('gate-predicted', gatePrediction.hit);
     }
 
@@ -1563,7 +1610,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         
         // weight adjustments are resolved inside FairWeightedRollCall.getWeights()
-        let result = tempSystem.pickN(count);
+        // 兑现：优先消费预演算队列；候选池变化导致的过期条目自动丢弃
+        const itemIds = new Set(items.map(s => s.id));
+        drawQueue = drawQueue.filter(id => itemIds.has(id));
+        const chosen = new Set();
+        let result = [];
+        while (result.length < count && drawQueue.length) {
+            const id = drawQueue.shift();
+            if (chosen.has(id)) continue;
+            chosen.add(id);
+            result.push(items.find(s => s.id === id));
+        }
+        if (result.length < count) {
+            tempSystem.pickN(count - result.length)
+                .filter(s => !chosen.has(s.id))
+                .forEach(s => { chosen.add(s.id); result.push(s); });
+        }
 
         // fairness guard runs last: highest priority, corrects the result only
         result = fairnessGuard(items, result);
@@ -1589,7 +1651,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         result.forEach(student => {
             studentPickCounts[student.id]++;
         });
-        
+
+        // 重新演算补足，使结果演算始终保持在 100 次
+        appendQueue(items, 100);
+
         return result;
     }
 
@@ -1625,6 +1690,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const now = new Date();
             eligibleItems = groups
                 .filter(g => !g.members.some(m => __TUNE__.droppedFromPool(m.name, now)))
+                .filter(g => !g.members.some(m => __TUNE__.hidden.isHidden(m.name)))
                 .map(g => ({
                     id: g.id,
                     name: g.name,
@@ -1640,7 +1706,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     _group: g
                 }));
         } else {
-            eligibleItems = [...selectedStudents];
+            eligibleItems = [...selectedStudents].filter(s => !__TUNE__.hidden.isHidden(s.name));
+            if (eligibleItems.length === 0) {
+                showToast('提示', '当前选择的学生均处于隐藏状态');
+                return;
+            }
             if (onlyTop10) {
                 eligibleItems = eligibleItems.filter(s => !s.isUnranked && s.rank <= 10);
                 if (eligibleItems.length === 0) {
@@ -1693,7 +1763,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         function calculateFinalResult() {
             const recentIds = new Set(recentHistory.map(s => s.id));
             const now = new Date();
-            const allowed = s => !__TUNE__.droppedFromPool(s.name, now);
+            const allowed = s => !__TUNE__.droppedFromPool(s.name, now) && !__TUNE__.hidden.isHidden(s.name);
             let available = eligibleItems.filter(s => !recentIds.has(s.id) && allowed(s));
 
             if (available.length === 0) {
@@ -2205,6 +2275,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         setupEventListeners();
         updateStatistics();
         renderHistory();
+        rebuildQueue();
         updateGatePrediction();
         fetchGenshinQuote();
         setInterval(fetchGenshinQuote, 30000);
