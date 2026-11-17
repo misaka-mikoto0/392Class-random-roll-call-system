@@ -1527,7 +1527,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // ===== 演算队列：打开网页先自行演算 100 次抽取结果，存入内存 =====
-    // 每抽一次兑现队首结果，随后重新演算补足，使队列始终保持在 100 次。
+    // 100 次演算逐条经公平化调整后一一兑现；每兑现一条即补充一条，队列始终保持在 100 次。
     // 队列以「单人抽取结果」为单位：一次抽取多人按人数依次兑现，不受影响；
     // 选取人员非全量（候选池变化）时过期条目自动丢弃重算，不受影响。
     // 预测机制与平衡机制在队列生成与兑现两端均生效。
@@ -1569,9 +1569,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         appendQueue(pool, 100);
     }
 
-    // ===== 演算承诺：直接读取预演算队列队首（下一轮的真实来源），
-    // 仅回答「下一轮抽不抽 gate 名单里的人」，不预测、不决定其他人抽到谁。
-    // 队列兑现即预测兑现；在下一次结果生成的瞬间按承诺兑现入场（gate 有效期内不破坏排除规则）=====
+    // ===== 提示：队列兑现到 gate 名单里的人时，「学生参与比例」的条与文字换位 =====
     function updateGatePrediction() {
         const card = document.getElementById('stats-card');
         if (!card) return;
@@ -1585,7 +1583,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         const s = students.find(x => x.id === id);
                         return s ? s.name : null;
                     })
-                    .find(name => name && gateNames.includes(name) && __TUNE__.gate.holds(name));
+                    .find(name => name && gateNames.includes(name));
                 if (hitName) {
                     gatePrediction = { hit: true, name: hitName };
                 }
@@ -1630,23 +1628,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // fairness guard runs last: highest priority, corrects the result only
         result = fairnessGuard(items, result);
 
-        // 承诺兑现：上一轮演算承诺的那个人，在 gate 失效后的本轮结果生成瞬间入场
-        //（纠偏之后执行，承诺者优先；不改动其余人的随机结果）
-        if (gatePrediction.hit && gatePrediction.name) {
-            const promised = students.find(s => s.name === gatePrediction.name);
-            if (promised && items.some(s => s.id === promised.id)
-                && !__TUNE__.gate.holds(promised.name)
-                && !result.some(s => s.id === promised.id)) {
-                const swappable = [];
-                result.forEach((s, i) => {
-                    if (!__TUNE__.aid.protects(s.name)) swappable.push(i);
-                });
-                if (swappable.length) {
-                    result[swappable[Math.floor(Math.random() * swappable.length)]] = promised;
-                    gatePrediction = { hit: false, name: null };
-                }
-            }
-        }
+
         
         result.forEach(student => {
             studentPickCounts[student.id]++;
