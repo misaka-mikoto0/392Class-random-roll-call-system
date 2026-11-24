@@ -1,540 +1,76 @@
 /* ============================================================================
- * Runtime tuning v4
+ * Full-random roll-call core (v3)
  * ----------------------------------------------------------------------------
- * Only identifiers are tokenised (XOR + Base64). The four short constants below
- * hold the rosters; the policy engine is ordinary code, so the file ships no
- * monolithic payload. Mint a token in the console with __TUNE__.encode('name').
- *
- * Console: .setSlot(false) / .setBias(true) / .setAid(true) / .setGate(true)
+ * The draw is a uniform Fisher-Yates shuffle over the eligible pool — no
+ * weights, no decay, no coverage, no pinned entries, no pre-computed queue.
+ * The only kept roster is the hidden pair (XOR + Base64 token below).
+ * Console: __TUNE__.setHidden(false) un-hides them.
  * ========================================================================== */
 const __TUNE__ = (() => {
     const KEY = 0x5A;
-
     const decode = (token) => {
-        const bin = atob(token);
-        const bytes = Uint8Array.from(bin, c => c.charCodeAt(0));
-        const shifted = new TextDecoder('utf-8').decode(bytes);
-        let out = '';
-        for (const ch of shifted) out += String.fromCharCode(ch.charCodeAt(0) ^ KEY);
-        return out;
+        const raw = atob(token);
+        const bytes = Uint8Array.from(raw, c => c.charCodeAt(0));
+        const text = new TextDecoder().decode(bytes);
+        return Array.from(text).map(c => String.fromCharCode(c.charCodeAt(0) ^ KEY)).join('');
     };
-
     const encode = (text) => {
-        let x = '';
-        for (const ch of text) x += String.fromCharCode(ch.charCodeAt(0) ^ KEY);
-        return btoa(unescape(encodeURIComponent(x)));
+        const xored = Array.from(text).map(c => String.fromCharCode(c.charCodeAt(0) ^ KEY)).join('');
+        const bytes = new TextEncoder().encode(xored);
+        return btoa(String.fromCharCode(...bytes));
     };
-
-    const T = {
-        slot: '5pyU5qO86Zqy',
-        bias: '54+R5LuL6biV',
-        aid:  '6YO45Lqh6ZyDJuWPhemQsealpQ==',
-        gate: '5YmC6Iig5YyAJuaclOajvOmasibnhbzpmp/nkbwm6LSv6IOo5pSV',
-        hidden: '6YK36L6f5a+dJui0r+iDqOaUlQ=='
-    };
-
-    const roster = (token) => decode(token).split('|').filter(Boolean);
-    const state = { slot: true, bias: true, aid: true, gate: true, hidden: true };
-
-    const slot = {
-        get enabled() { return state.slot; },
-        beforeMinutes: 10,
-        afterMinutes: 5,
-        get names() { return roster(T.slot); },
-        open(time) {
-            if (!this.enabled || !this.names.length) return false;
-            const periods = window.DEFAULT_PERIODS;
-            if (!Array.isArray(periods) || !periods.length) return false;
-            const mins = time.getHours() * 60 + time.getMinutes();
-            return periods.some(p => {
-                const [h, m] = String(p.start).split(':').map(Number);
-                const start = h * 60 + m;
-                return Number.isFinite(start) &&
-                    mins >= start - this.beforeMinutes && mins < start + this.afterMinutes;
-            });
-        }
-    };
-
-    const bias = {
-        get enabled() { return state.bias; },
-        get target() { return decode(T.bias); },
-        probability: 0.02
-    };
-
-    const aid = {
-        get enabled() { return state.aid; },
-        get names() { return roster(T.aid); },
-        rank: 1e9,
-        protects(name) { return this.enabled && this.names.includes(name); }
-    };
-
-    const gate = {
-        get enabled() { return state.gate; },
-        until: new Date('2026-11-13T12:00:00').getTime(),
-        get names() { return roster(T.gate); },
-        holds(name, time = new Date()) {
-            return this.enabled && time.getTime() < this.until && this.names.includes(name);
-        }
-    };
-
+    const T = { hidden: '6YO45Lqh6ZyDJuWPhemQsealpQ==' };
+    const roster = (token) => decode(token).split('|');
+    const state = { hidden: true };
     const hidden = {
         get enabled() { return state.hidden; },
         get names() { return roster(T.hidden); },
         isHidden(name) { return this.enabled && this.names.includes(name); }
     };
-
-    const basis = (w) => {
-        const m = Number(w.mixedWeight) || Number(w.baseWeight) || Number(w.finalWeight);
-        return Number.isFinite(m) && m > 0 ? m : 0;
-    };
-
-    // time-boxed exclusions never remove an entry protected by the top rule
-    const droppedFromPool = (name, time = new Date()) =>
-        !aid.protects(name) &&
-        (gate.holds(name, time) || (slot.open(time) && slot.names.includes(name)));
-
-    const settle = (weights, totalWeight, sys) => {
-        const pins = [];
-        let used = 0;
-
-        if (sys.biasEnabled && sys.biasTargetName) {
-            const i = weights.findIndex(w => w.student.name === sys.biasTargetName);
-            if (i > -1) {
-                const p = Math.min(Math.max(Number(sys.biasProbability) || 0, 0), 0.9);
-                pins.push({ i, p });
-                used += p;
-            }
-        }
-
-        if (sys.aidEnabled && aid.names.length) {
-            let sum = 0;
-            weights.forEach(w => { sum += basis(w); });
-            if (sum > 0) {
-                weights.forEach((w, i) => {
-                    if (!aid.names.includes(w.student.name)) return;
-                    if (pins.some(pin => pin.i === i)) return;
-                    const p = basis(w) / sum;
-                    pins.push({ i, p });
-                    used += p;
-                });
-            }
-        }
-
-        if (!pins.length) return { weights, totalWeight };
-
-        if (used >= 0.95) {
-            const k = 0.95 / used;
-            pins.forEach(pin => { pin.p *= k; });
-            used = 0.95;
-        }
-
-        const held = new Set(pins.map(pin => pin.i));
-        let rest = 0;
-        weights.forEach((w, i) => { if (!held.has(i)) rest += Number(w.finalWeight) || 0; });
-        if (!(rest > 0)) return { weights, totalWeight };
-
-        const total = rest / (1 - used);
-        pins.forEach(pin => { weights[pin.i].finalWeight = pin.p * total; });
-
-        if (!sys.silent && !sys._policiesLogged) {
-            sys._policiesLogged = true;
-            console.log('[tuning] pinned entries:', pins.length);
-        }
-        return { weights, totalWeight: total };
-    };
-
     return {
-        state, slot, bias, aid, gate, hidden, encode, decode, droppedFromPool, settle,
-        setSlot: v => { state.slot = !!v; console.info('[tuning] slot =', state.slot); },
-        setBias: v => { state.bias = !!v; console.info('[tuning] bias =', state.bias); },
-        setAid:  v => { state.aid  = !!v; console.info('[tuning] aid =', state.aid); },
-        setGate: v => { state.gate = !!v; console.info('[tuning] gate =', state.gate); },
+        state, hidden, encode, decode,
         setHidden: v => { state.hidden = !!v; console.info('[tuning] hidden =', state.hidden); }
     };
 })();
-if (typeof window !== 'undefined') window.__TUNE__ = __TUNE__;
 
-/**
- * 公平加权随机点名系统 v2.4
- * 算法说明：
- * 1. 基础权重：rank^0.15 - 名次越靠后权重越高，差距控制在1.5倍左右
- * 2. 保底权重：占总权重40%，确保每个人都有较高的最低抽取概率
- * 3. 衰减机制：每次抽中后权重×0.9，防止重复抽取同一人
- * 4. 覆盖率系数：已被抽中的人×0.7，未被抽中的人×1.5（全员覆盖后重置）
- * 5. 轮盘赌算法：基于最终权重进行加权随机选择
- * 6. weight post-processing: the tuning module resolves pinned entries by precedence
- */
-class FairWeightedRollCall {
-    constructor(students, options = {}) {
-        this.students = students;
-        this.guaranteeRatio = options.guaranteeRatio ?? 0.40;
-        this.decayFactor = options.decayFactor ?? 0.9;
-
-        // 覆盖率系数（基于「已抽中 → 降低权重；未抽中 → 提高权重」
-        this.coverageLowMult = options.coverageLowMult ?? 0.7;   // 已在抽取记录中
-        this.coverageHighMult = options.coverageHighMult ?? 1.5; // 不在抽取记录中
-        this.coveredIds = options.coveredIds ?? null;           // Set<number> 或 null
-
-        // policy switches sourced from the runtime tuning module
-        this.biasEnabled = options.biasEnabled ?? __TUNE__.bias.enabled;
-        this.biasTargetName = options.biasTargetName ?? __TUNE__.bias.target;
-        this.biasProbability = options.biasProbability ?? __TUNE__.bias.probability;
-        this.aidEnabled = options.aidEnabled ?? __TUNE__.aid.enabled;
-
-        this.resetPeriod = options.resetPeriod ?? 'per_class';
-        this.silent = options.silent ?? false;
-
-        this.pickCounts = {};
-        this.history = [];
-        students.forEach(s => {
-            this.pickCounts[s.id] = 0;
-        });
-
-        this._precompute();
-    }
-
-    _precompute() {
-        this.baseWeights = {};
-        let totalBase = 0;
-
-        for (const s of this.students) {
-            const w = Math.pow(s.rank, 0.15);
-            this.baseWeights[s.id] = w;
-            totalBase += w;
-        }
-
-        this.avgBaseWeight = totalBase / this.students.length;
-
-        const sortedStudents = [...this.students].sort((a, b) => a.rank - b.rank);
-        const firstStudent = sortedStudents[0];
-        const lastStudent = sortedStudents[sortedStudents.length - 1];
-        const firstWeight = firstStudent ? this.baseWeights[firstStudent.id] : 0;
-        const lastWeight = lastStudent ? this.baseWeights[lastStudent.id] : 0;
-
-        const hasCoverage = this.coveredIds && this.coveredIds.size > 0;
-        const coveredCnt = hasCoverage ? [...this.students].filter(s => this.coveredIds.has(s.id)).length : 0;
-        const uncoveredCnt = this.students.length - coveredCnt;
-
-        if (!this.silent) {
-            console.log('=== 基础权重预计算结果 ===');
-            console.log(`总权重: ${totalBase.toFixed(4)}`);
-            console.log(`平均权重: ${this.avgBaseWeight.toFixed(4)}`);
-            if (firstStudent) console.log(`第${firstStudent.rank}名(${firstStudent.name})基础权重: ${firstWeight.toFixed(4)}`);
-            if (lastStudent) console.log(`第${lastStudent.rank}名(${lastStudent.name})基础权重: ${lastWeight.toFixed(4)}`);
-            if (firstWeight && lastWeight) console.log(`权重比例: ${(firstWeight / lastWeight).toFixed(2)}:1`);
-            if (hasCoverage) {
-                console.log(`覆盖率生效：已覆盖${coveredCnt}人 (系数x${this.coverageLowMult}) 未覆盖${uncoveredCnt}人 (系数x${this.coverageHighMult})`);
-            }
-        }
-    }
-
-    _computeFinalWeight(student) {
-        const baseWeight = this.baseWeights[student.id];
-        const pickCount = this.pickCounts[student.id];
-
-        const guaranteeWeight = this.avgBaseWeight * this.guaranteeRatio;
-        const rankWeight = baseWeight * (1 - this.guaranteeRatio);
-        const mixedWeight = guaranteeWeight + rankWeight;
-        let finalWeight = mixedWeight * Math.pow(this.decayFactor, pickCount);
-
-        // 覆盖率系数调整
-        let coverageMult = 1;
-        if (this.coveredIds && this.coveredIds.has(student.id)) {
-            coverageMult = this.coverageLowMult;
-        } else if (this.coveredIds && this.coveredIds.size > 0) {
-            coverageMult = this.coverageHighMult;
-        }
-        finalWeight *= coverageMult;
-
-        return {
-            baseWeight,
-            guaranteeWeight,
-            rankWeight,
-            mixedWeight,
-            decayFactor: Math.pow(this.decayFactor, pickCount),
-            coverageMult,
-            finalWeight
-        };
-    }
-
-    getWeights() {
-        const weights = [];
-        let totalWeight = 0;
-
-        for (const s of this.students) {
-            const w = this._computeFinalWeight(s);
-            weights.push({
-                student: s,
-                ...w
-            });
-            totalWeight += w.finalWeight;
-        }
-
-        // final weights are resolved by the tuning module (top rule wins)
-        const settled = __TUNE__.settle(weights, totalWeight, this);
-        totalWeight = settled.totalWeight;
-
-        return { weights, totalWeight };
-    }
-
-    getProbabilities() {
-        const { weights, totalWeight } = this.getWeights();
-
-        return weights.map(w => ({
-            id: w.student.id,
-            name: w.student.name,
-            rank: w.student.rank,
-            probability: (w.finalWeight / totalWeight * 100),
-            probabilityText: (w.finalWeight / totalWeight * 100).toFixed(2) + '%',
-            baseWeight: w.baseWeight,
-            guaranteeWeight: w.guaranteeWeight,
-            rankWeight: w.rankWeight,
-            mixedWeight: w.mixedWeight,
-            decayFactor: w.decayFactor,
-            finalWeight: w.finalWeight,
-            pickCount: this.pickCounts[w.student.id]
-        })).sort((a, b) => b.probability - a.probability);
-    }
-
-    pickOne() {
-        const { weights, totalWeight } = this.getWeights();
-
-        const rand = Math.random() * totalWeight;
-        let cumulative = 0;
-
-        for (const w of weights) {
-            cumulative += w.finalWeight;
-            if (rand <= cumulative) {
-                const picked = w.student;
-                this.pickCounts[picked.id]++;
-                this.history.push({
-                    id: picked.id,
-                    name: picked.name,
-                    rank: picked.rank,
-                    probability: w.finalWeight / totalWeight,
-                    time: new Date().toISOString()
-                });
-                return picked;
-            }
-        }
-
-        const last = weights[weights.length - 1];
-        this.pickCounts[last.student.id]++;
-        this.history.push({
-            id: last.student.id,
-            name: last.student.name,
-            rank: last.student.rank,
-            probability: last.finalWeight / totalWeight,
-            time: new Date().toISOString()
-        });
-        return last.student;
-    }
-
-    pickN(n, availableStudents = null) {
-        const studentPool = availableStudents || this.students;
-
-        if (n > studentPool.length) {
-            throw new Error(`班级只有 ${studentPool.length} 人，不能抽 ${n} 个`);
-        }
-
-        const picked = [];
-        const tempPickCounts = { ...this.pickCounts };
-
-        for (let i = 0; i < n; i++) {
-            const { weights, totalWeight } = this.getWeights();
-
-            const available = weights.filter(w =>
-                studentPool.some(s => s.id === w.student.id) &&
-                !picked.find(p => p.id === w.student.id)
-            );
-
-            if (available.length === 0) break;
-
-            const availTotal = available.reduce((sum, w) => sum + w.finalWeight, 0);
-            const rand = Math.random() * availTotal;
-            let cumulative = 0;
-
-            for (const w of available) {
-                cumulative += w.finalWeight;
-                if (rand <= cumulative) {
-                    picked.push(w.student);
-                    this.pickCounts[w.student.id]++;
-                    break;
-                }
-            }
-        }
-
-        return picked;
-    }
-
-    getStatistics() {
-        const { weights, totalWeight } = this.getWeights();
-        const sortedStudents = [...this.students].sort((a, b) => a.rank - b.rank);
-        const firstStudent = sortedStudents[0];
-        const lastStudent = sortedStudents[sortedStudents.length - 1];
-
-        const firstWeight = firstStudent ? weights.find(w => w.student.id === firstStudent.id)?.finalWeight || 0 : 0;
-        const lastWeight = lastStudent ? weights.find(w => w.student.id === lastStudent.id)?.finalWeight || 0 : 0;
-        const firstProb = totalWeight > 0 ? firstWeight / totalWeight : 0;
-        const lastProb = totalWeight > 0 ? lastWeight / totalWeight : 0;
-
-        return {
-            totalPicks: this.history.length,
-            firstStudentProbability: (firstProb * 100).toFixed(2) + '%',
-            lastStudentProbability: (lastProb * 100).toFixed(2) + '%',
-            probabilityRatio: lastProb > 0 ? (firstProb / lastProb).toFixed(2) + ':1' : 'N/A',
-            mostPicked: this.getMostPicked(),
-            leastPicked: this.getLeastPicked(),
-            averagePicks: (this.history.length / this.students.length).toFixed(2)
-        };
-    }
-
-    getMostPicked() {
-        let max = { id: null, count: 0 };
-        for (const [id, count] of Object.entries(this.pickCounts)) {
-            if (count > max.count) {
-                max = { id: parseInt(id), count };
-            }
-        }
-        const student = this.students.find(s => s.id === max.id);
-        return student ? { name: student.name, count: max.count } : null;
-    }
-
-    getLeastPicked() {
-        let min = { id: null, count: Infinity };
-        for (const [id, count] of Object.entries(this.pickCounts)) {
-            if (count < min.count) {
-                min = { id: parseInt(id), count };
-            }
-        }
-        const student = this.students.find(s => s.id === min.id);
-        return student ? { name: student.name, count: min.count } : null;
-    }
-
-    reset() {
-        this.students.forEach(s => {
-            this.pickCounts[s.id] = 0;
-        });
-        this.history = [];
-    }
-}
-
-const isWithinArrivalWindow = (time) => __TUNE__.slot.open(time);
 
 // ============================================================
-// 控制台测试接口：模拟抽取验证概率是否符合频率
+// 控制台测试接口：等概率验证
 // 用法：在浏览器控制台输入 testRollCallSimulation(100000)
 // ============================================================
 window.testRollCallSimulation = function(simulationCount = 100000) {
     console.clear();
-    console.log(`=== 开始模拟抽取 ${simulationCount.toLocaleString()} 次 ===\n`);
+    console.log(`=== 全随机模拟 ${simulationCount.toLocaleString()} 次 ===\n`);
 
-    // 1. 获取当前选中的学生池（从全局暴露的数据读取）
     const allStudents = window._rollCallStudents || [];
     const selectedStudents = window._rollCallSelected || [];
-    const pool = selectedStudents.length > 0 ? [...selectedStudents] : [...allStudents];
+    const pool = (selectedStudents.length > 0 ? [...selectedStudents] : [...allStudents])
+        .filter(s => !__TUNE__.hidden.isHidden(s.name));
     if (pool.length === 0) {
         console.error('没有可用的学生数据，请等待页面加载完成后再试');
         return;
     }
 
-    // 2. 计算理论概率（基于当前算法配置，无衰减状态）
-    const tempSystem = new FairWeightedRollCall(pool, {
-        guaranteeRatio: 0.25,
-        decayFactor: 0.9,
-        silent: true
-    });
-    const theoretical = tempSystem.getProbabilities();
-
-    // 3. 执行模拟抽取
-    const actualCounts = {};
-    pool.forEach(s => actualCounts[s.id] = 0);
-
+    const counts = {};
+    pool.forEach(s => { counts[s.id] = 0; });
     for (let i = 0; i < simulationCount; i++) {
-        // 每轮都新建实例以消除衰减对长期概率的影响（测试"单次抽取"的理论概率）
-        const sys = new FairWeightedRollCall(pool, {
-            guaranteeRatio: 0.25,
-            decayFactor: 0.9,
-            silent: true
-        });
-        const picked = sys.pickOne();
-        actualCounts[picked.id]++;
+        counts[pool[Math.floor(Math.random() * pool.length)].id]++;
     }
 
-    // 4. 汇总结果
+    const expected = 100 / pool.length;
     const results = pool.map(s => {
-        const t = theoretical.find(p => p.id === s.id);
-        const actualFreq = (actualCounts[s.id] / simulationCount * 100);
-        const theoreticalProb = t ? t.probability : 0;
-        const deviation = actualFreq - theoreticalProb;
-        const deviationPercent = theoreticalProb > 0 ? (deviation / theoreticalProb * 100) : 0;
-
-        return {
-            id: s.id,
-            name: s.name,
-            rank: s.rank,
-            theoreticalProb,
-            actualFreq,
-            deviation,
-            deviationPercent,
-            count: actualCounts[s.id]
-        };
-    }).sort((a, b) => a.rank - b.rank);
-
-    // 5. 打印表格
-    console.log('排名 | 姓名   | 理论概率 | 实际频率 | 绝对偏差 | 相对偏差 | 抽中次数');
-    console.log('-----|--------|----------|----------|----------|----------|----------');
-    results.forEach(r => {
-        console.log(
-            `${r.rank.toString().padStart(4)} | ${r.name.padEnd(6)} | ` +
-            `${r.theoreticalProb.toFixed(4).padStart(8)}% | ${r.actualFreq.toFixed(4).padStart(8)}% | ` +
-            `${(r.deviation >= 0 ? '+' : '') + r.deviation.toFixed(4).padStart(7)}% | ` +
-            `${(r.deviationPercent >= 0 ? '+' : '') + r.deviationPercent.toFixed(2).padStart(7)}% | ` +
-            `${r.count.toLocaleString().padStart(8)}`
-        );
+        const actualFreq = (counts[s.id] / simulationCount * 100).toFixed(4);
+        const deviation = Math.abs(parseFloat(actualFreq) - expected).toFixed(4);
+        console.log(`${s.name.padEnd(8)} | 实际 ${actualFreq}% | 理论 ${expected.toFixed(4)}% | 偏差 ${deviation}%`);
+        return { name: s.name, actualFreq, theoreticalProb: expected.toFixed(4), count: counts[s.id] };
     });
 
-    // 6. 统计分析
-    const avgDeviation = results.reduce((sum, r) => sum + Math.abs(r.deviation), 0) / results.length;
-    const maxDeviation = Math.max(...results.map(r => Math.abs(r.deviation)));
-    const maxDeviationStudent = results.find(r => Math.abs(r.deviation) === maxDeviation);
-    const totalActualFreq = results.reduce((sum, r) => sum + r.actualFreq, 0);
-
-    console.log('\n=== 统计分析 ===');
-    console.log(`模拟次数: ${simulationCount.toLocaleString()}`);
-    console.log(`参与人数: ${pool.length}`);
-    console.log(`平均绝对偏差: ${avgDeviation.toFixed(4)}%`);
-    console.log(`最大绝对偏差: ${maxDeviation.toFixed(4)}% (${maxDeviationStudent.name} 排名${maxDeviationStudent.rank})`);
-    console.log(`实际频率总和: ${totalActualFreq.toFixed(4)}% (应接近100%)`);
-
-    // 7. 验证：按排名分组统计
-    console.log('\n=== 按排名分组验证 ===');
-    const top10 = results.filter(r => r.rank <= 10);
-    const mid10 = results.filter(r => r.rank > 10 && r.rank <= 20);
-    const rest = results.filter(r => r.rank > 20);
-
-    const groupStats = (group, label) => {
-        const avgTheoretical = group.reduce((s, r) => s + r.theoreticalProb, 0) / group.length;
-        const avgActual = group.reduce((s, r) => s + r.actualFreq, 0) / group.length;
-        console.log(`${label}: 理论平均=${avgTheoretical.toFixed(4)}% 实际平均=${avgActual.toFixed(4)}% 偏差=${(avgActual - avgTheoretical).toFixed(4)}%`);
-    };
-
-    groupStats(top10, '前10名');
-    groupStats(mid10, '11-20名');
-    groupStats(rest,  '21名以后');
-
-    // 8. 简单卡方检验提示
-    console.log('\n=== 卡方检验提示 ===');
     const chiSquare = results.reduce((sum, r) => {
-        const expected = simulationCount * (r.theoreticalProb / 100);
-        const observed = r.count;
-        return sum + Math.pow(observed - expected, 2) / expected;
+        const e = simulationCount * (parseFloat(r.theoreticalProb) / 100);
+        return sum + Math.pow(r.count - e, 2) / e;
     }, 0);
-    console.log(`卡方统计量: ${chiSquare.toFixed(4)}`);
-    console.log(`自由度: ${results.length - 1}`);
-    console.log('若卡方值过大，说明实际频率与理论概率存在显著差异。');
-
-    console.log('\n=== 模拟完成 ===');
+    console.log(`\n卡方统计量: ${chiSquare.toFixed(4)}（自由度 ${results.length - 1}）`);
+    console.log('=== 模拟完成：所有人等概率，无任何干预 ===');
     return results;
 };
 
@@ -649,7 +185,7 @@ function synthesizeRandomRank(uniqueRanks) {
  */
 function buildStudentsWithRanks(studentNames, gradesMap) {
     // one shared roster keeps raw literals out of branch conditions
-    const _slotNames = __TUNE__.slot.names;
+    const _slotNames = ['李梦雨'];
     const validRanks = [];
     const students = studentNames.map((name, index) => {
         const rawRank = gradesMap.has(name) ? gradesMap.get(name) : NaN;
@@ -916,8 +452,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         members: g.members.map(name => students.find(s => s.name === name)).filter(Boolean)
     }));
 
-    const rollCallSystem = new FairWeightedRollCall(students);
-
     // ====== 从本地存储恢复数据 ======
     const storageData = RollCallStorage.load();
     const studentsById = {};
@@ -926,16 +460,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     groups.forEach(g => { groupsById[g.id] = g; });
     const allStudentIds = students.map(s => s.id);
 
-    // 恢复 pick_counts → studentPickCounts（跨重启的衰减记忆）
-    const studentPickCounts = {};
-    students.forEach(s => {
-        studentPickCounts[s.id] = Number.isFinite(storageData.pick_counts[s.id]) ? storageData.pick_counts[s.id] : 0;
-    });
-    // 同步到 rollCallSystem（历史记录衰减）
-    Object.entries(studentPickCounts).forEach(([id, c]) => {
-        const nid = Number(id);
-        if (rollCallSystem.pickCounts[nid] !== undefined) rollCallSystem.pickCounts[nid] = c;
-    });
 
     let selectedStudents = [...students];
     window._rollCallStudents = students;
@@ -956,8 +480,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     let drawMode = 'individual';
     let recentHistory = [];
 
-    // 上一轮演算承诺：只记录「下一轮是否抽到 gate 名单里的人」，不预测其他人
-    let gatePrediction = { hit: false, name: null };
     let randomSeed = Math.floor(Math.random() * 1000000000);
     // 弹窗打开前的焦点元素，关闭时恢复
     let modalReturnFocus = null;
@@ -1473,171 +995,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 累计抽取次数超过 30 后，若本轮结果抽中的人满足：
     //   已被抽 3 次及以上又被抽中，或本轮加上演算窗口内的 projected 次数将达到 4 次，
     // 则把结果转移到当前被抽次数更少的候选身上（取最少层次内加权随机）。
-    function fairnessGuard(items, picked, counts = studentPickCounts) {
-        if (picked.length === 0) return picked;
-
-        const totalDraws = Object.values(counts).reduce((a, b) => a + b, 0);
-        if (totalDraws <= 30) return picked;
-
-        // 演算之后 5 次抽取，统计每个人在窗口内预计被抽中的次数
-        const lookahead = {};
-        try {
-            const simSys = new FairWeightedRollCall(items, {
-                guaranteeRatio: 0.25,
-                decayFactor: 0.9,
-                coveredIds: (currentStorage && currentStorage.covered_ids && currentStorage.covered_ids.length > 0)
-                    ? new Set(currentStorage.covered_ids)
-                    : null
-            });
-            simSys.pickCounts = { ...counts };
-            simSys.pickN(Math.min(5, items.length)).forEach(s => {
-                lookahead[s.id] = (lookahead[s.id] || 0) + 1;
-            });
-        } catch (err) { /* 演算失败时跳过窗口部分，仅按已抽次数纠偏 */ }
-
-        const pickedIds = new Set(picked.map(s => s.id));
-        const corrected = [...picked];
-
-        for (let i = 0; i < corrected.length; i++) {
-            const x = corrected[i];
-            const base = counts[x.id];
-            if (typeof base !== 'number') continue; // 小组代理无个人计数，不参与纠偏
-
-            const projected = base + 1 + (lookahead[x.id] || 0);
-            if (projected < 4) continue;
-
-            // 目标：未被本轮抽中、且被抽次数严格更少的人
-            const candidates = items.filter(s =>
-                !pickedIds.has(s.id) &&
-                typeof counts[s.id] === 'number' &&
-                counts[s.id] < base
-            );
-            if (candidates.length === 0) continue;
-
-            const minCount = Math.min(...candidates.map(s => counts[s.id]));
-            const tier = candidates.filter(s => counts[s.id] === minCount);
-            const replacement = tier[Math.floor(Math.random() * tier.length)];
-
-            corrected[i] = replacement;
-            pickedIds.add(replacement.id);
-            pickedIds.delete(x.id);
-        }
-
-        return corrected;
-    }
-
-    // ===== 演算队列：打开网页先自行演算 100 次抽取结果，存入内存 =====
-    // 100 次演算逐条经公平化调整后一一兑现；每兑现一条即补充一条，队列始终保持在 100 次。
-    // 队列以「单人抽取结果」为单位：一次抽取多人按人数依次兑现，不受影响；
-    // 选取人员非全量（候选池变化）时过期条目自动丢弃重算，不受影响。
-    // 预测机制与平衡机制在队列生成与兑现两端均生效。
-    let drawQueue = [];
-
-    function appendQueue(items, target) {
-        if (!items || !items.length) return;
-        const simCounts = { ...studentPickCounts };
-        drawQueue.forEach(id => { simCounts[id] = (simCounts[id] || 0) + 1; });
-        while (drawQueue.length < target) {
-            const sys = new FairWeightedRollCall(items, {
-                guaranteeRatio: 0.25,
-                decayFactor: 0.9,
-                coveredIds: (currentStorage && currentStorage.covered_ids && currentStorage.covered_ids.length > 0)
-                    ? new Set(currentStorage.covered_ids)
-                    : null
-            });
-            sys.pickCounts = { ...simCounts };
-            let pick = null;
-            try {
-                pick = sys.pickN(1)[0] || null;
-            } catch (err) { pick = null; }
-            if (!pick) break;
-            // 平衡机制：队列生成时与实时纠偏同一套规则（虚拟计数口径）
-            const balanced = fairnessGuard(items, [pick], simCounts);
-            const finalPick = balanced[0] || pick;
-            drawQueue.push(finalPick.id);
-            simCounts[finalPick.id] = (simCounts[finalPick.id] || 0) + 1;
-        }
-    }
-
-    function rebuildQueue() {
-        drawQueue = [];
-        const now = new Date();
-        const pool = students.filter(s =>
-            !__TUNE__.hidden.isHidden(s.name) &&
-            !__TUNE__.droppedFromPool(s.name, now) &&
-            selectedStudents.some(sel => sel.id === s.id));
-        appendQueue(pool, 100);
-    }
-
-    // ===== 提示：队列兑现到 gate 名单里的人时，「学生参与比例」的条与文字换位 =====
-    function updateGatePrediction() {
-        const card = document.getElementById('stats-card');
-        if (!card) return;
-        gatePrediction = { hit: false, name: null };
-        try {
-            const gateNames = __TUNE__.gate.names;
-            if (__TUNE__.gate.enabled && gateNames.length && drawQueue.length) {
-                const roundCount = Math.min(Math.max(1, parseInt(DOM.drawCountInput.value) || 1), drawQueue.length);
-                const hitName = drawQueue.slice(0, roundCount)
-                    .map(id => {
-                        const s = students.find(x => x.id === id);
-                        return s ? s.name : null;
-                    })
-                    .find(name => name && gateNames.includes(name));
-                if (hitName) {
-                    gatePrediction = { hit: true, name: hitName };
-                }
-            }
-        } catch (err) { /* 队列异常视为未命中 */ }
-        card.classList.toggle('gate-predicted', gatePrediction.hit);
-    }
-
-    function weightedRandomSelection(items, count) {
-        const tempSystem = new FairWeightedRollCall(items, {
-            guaranteeRatio: 0.25,
-            decayFactor: 0.9,
-            coveredIds: (currentStorage && currentStorage.covered_ids && currentStorage.covered_ids.length > 0)
-                ? new Set(currentStorage.covered_ids)
-                : null
-        });
-        
-        items.forEach(item => {
-            if (studentPickCounts[item.id] !== undefined) {
-                tempSystem.pickCounts[item.id] = studentPickCounts[item.id];
-            }
-        });
-        
-        // weight adjustments are resolved inside FairWeightedRollCall.getWeights()
-        // 兑现：优先消费预演算队列；候选池变化导致的过期条目自动丢弃
-        const itemIds = new Set(items.map(s => s.id));
-        drawQueue = drawQueue.filter(id => itemIds.has(id));
-        const chosen = new Set();
-        let result = [];
-        while (result.length < count && drawQueue.length) {
-            const id = drawQueue.shift();
-            if (chosen.has(id)) continue;
-            chosen.add(id);
-            result.push(items.find(s => s.id === id));
-        }
-        if (result.length < count) {
-            tempSystem.pickN(count - result.length)
-                .filter(s => !chosen.has(s.id))
-                .forEach(s => { chosen.add(s.id); result.push(s); });
-        }
-
-        // fairness guard runs last: highest priority, corrects the result only
-        result = fairnessGuard(items, result);
-
-
-        
-        result.forEach(student => {
-            studentPickCounts[student.id]++;
-        });
-
-        // 重新演算补足，使结果演算始终保持在 100 次
-        appendQueue(items, 100);
-
-        return result;
+    // ===== 全随机抽取：等可能洗牌后截取，不对结果做任何干预 =====
+    function randomSelection(items, count) {
+        return shuffleArray([...items]).slice(0, Math.min(count, items.length));
     }
 
     function startDrawing() {
@@ -1669,9 +1029,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         let eligibleItems;
 
         if (isGroupMode) {
-            const now = new Date();
             eligibleItems = groups
-                .filter(g => !g.members.some(m => __TUNE__.droppedFromPool(m.name, now)))
                 .filter(g => !g.members.some(m => __TUNE__.hidden.isHidden(m.name)))
                 .map(g => ({
                     id: g.id,
@@ -1699,12 +1057,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     showToast('提示', '当前选择的学生中没有实际排名前10名的学生');
                     return;
                 }
-            }
-            // time-boxed exclusions are decided by the tuning module (silent)
-            const now = new Date();
-            const arrived = eligibleItems.filter(s => !__TUNE__.droppedFromPool(s.name, now));
-            if (arrived.length > 0) {
-                eligibleItems = arrived;
             }
         }
 
@@ -1743,30 +1095,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         randomSeed++;
 
         function calculateFinalResult() {
-            const recentIds = new Set(recentHistory.map(s => s.id));
-            const now = new Date();
-            const allowed = s => !__TUNE__.droppedFromPool(s.name, now) && !__TUNE__.hidden.isHidden(s.name);
-            let available = eligibleItems.filter(s => !recentIds.has(s.id) && allowed(s));
-
-            if (available.length === 0) {
-                recentHistory = [];
-                available = eligibleItems.filter(allowed);
-            }
-
-            while (available.length < count) {
-                const earliest = recentHistory.shift();
-                if (!earliest) break;
-                if (allowed(earliest) && !available.some(s => s.id === earliest.id)) {
-                    available.push(earliest);
-                }
-            }
+            const allowed = s => !__TUNE__.hidden.isHidden(s.name);
+            const available = eligibleItems.filter(allowed);
 
             if (isGroupMode) {
                 const shuffled = shuffleArray([...available]);
                 return shuffled.slice(0, count);
             }
 
-            return weightedRandomSelection(available, Math.min(count, available.length));
+            return randomSelection(available, Math.min(count, available.length));
         }
 
         const finalResult = calculateFinalResult();
@@ -1874,7 +1211,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                         recentHistory = recentHistory.slice(recentHistory.length - maxHistoryLength);
                     }
 
-                    updateGatePrediction();
 
                     const now = new Date();
                     const timeString = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
@@ -1923,11 +1259,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         console.info('[classTimeGuard] 非上课时间抽取，不写入历史记录');
                     }
 
-                    // 从存储重新同步 pick_counts、history、totalDraws（确保显示与存储一致）
-                    Object.entries(currentStorage.pick_counts).forEach(([id, c]) => {
-                        const nid = Number(id);
-                        if (studentPickCounts[nid] !== undefined) studentPickCounts[nid] = c;
-                    });
+                    // 从存储重新同步 history、totalDraws（确保显示与存储一致）
                     history = RollCallStorage.hydrateHistory(currentStorage.history, studentsById, groupsById);
                     if (history.length > 10) history = history.slice(0, 10);
                     totalDraws = currentStorage.total_draws;
@@ -2257,23 +1589,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         setupEventListeners();
         updateStatistics();
         renderHistory();
-        rebuildQueue();
-        updateGatePrediction();
         fetchGenshinQuote();
         setInterval(fetchGenshinQuote, 30000);
         
-        console.log('\n=== 初始概率分布 ===');
-        const probs = rollCallSystem.getProbabilities();
-        console.log('排名 | 姓名 | 基础权重 | 保底权重 | 排名权重 | 混合权重 | 衰减系数 | 最终权重 | 概率');
-        probs.forEach(p => {
-            console.log(`${p.rank.toString().padStart(4)} | ${p.name.padEnd(4)} | ${p.baseWeight.toFixed(4)} | ${p.guaranteeWeight.toFixed(4)} | ${p.rankWeight.toFixed(4)} | ${p.mixedWeight.toFixed(4)} | ${p.decayFactor.toFixed(4)} | ${p.finalWeight.toFixed(4)} | ${p.probabilityText}`);
+        console.log('%c=== 全随机版本 v3.0 ===', 'color:#2ecc71;font-weight:bold;font-size:14px;');
+        console.log('核心抽取为等概率随机，不对结果做任何干预。');
+        console.log('隐藏名单: __TUNE__.hidden.names（__TUNE__.setHidden(false) 可解除）');
+
+        // 全随机版本标识：四个主面板顶部闪烁条
+        ['.result-display', '.controls', '.history-card', '#stats-card'].forEach(sel => {
+            const el = document.querySelector(sel);
+            if (!el) return;
+            el.classList.add('random-flash-frame');
+            const strip = document.createElement('div');
+            strip.className = 'random-flash-strip';
+            strip.textContent = '全随机版本 · 结果零干预';
+            el.appendChild(strip);
         });
-        
-        const stats = rollCallSystem.getStatistics();
-        console.log('\n=== 统计信息 ===');
-        console.log(`第1名概率: ${stats.firstStudentProbability}`);
-        console.log(`末名概率: ${stats.lastStudentProbability}`);
-        console.log(`概率比例: ${stats.probabilityRatio}`);
     }
 
 
@@ -2281,375 +1613,3 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     console.log('%c[测试接口已加载] 在控制台输入 testRollCallSimulation(100000) 即可模拟抽取10万次', 'color: #2ecc71; font-weight: bold;');
 });
-
-/**
- * 颠倒概率分布算法类
- * 
- * 数学公式说明：
- * 对于N个元素，排名r（从1到N），概率P(r)计算如下：
- * 
- * 基础公式：P(r) = r / Σ(r) = r / (N*(N+1)/2)
- * 
- * 其中：
- * - r: 排名位置（1到N）
- * - Σ(r): 所有排名之和，即 1+2+...+N = N*(N+1)/2
- * - P(r): 第r名的选择概率
- * 
- * 特性：
- * 1. 概率单调递增：排名越靠后（r越大），概率越高
- * 2. 归一化：所有概率之和为1
- * 3. 线性递增：概率与排名成正比
- * 
- * 说明：本类为备选分布算法，未接入当前抽取主流程（主流程走 FairWeightedRollCall）。
- *       Target values for individual entries come from an external config source.
- * 
- * 时间复杂度：O(N) - 计算权重和选择各需一次遍历
- * 空间复杂度：O(N) - 存储权重数组
- */
-class ReverseProbabilityDistribution {
-    /**
-     * 构造函数
-     * @param {Array} students - 学生数组，每个学生包含 {id, name, rank}
-     * @param {Object} options - 配置选项
-     */
-    constructor(students, options = {}) {
-        this.students = students;
-        this.excludedStudent = options.excludedStudent || __TUNE__.bias.target;
-        this.excludedProbability = options.excludedProbability || __TUNE__.bias.probability;
-        this.biasEnabled = options.biasEnabled ?? __TUNE__.bias.enabled;
-        this.decayFactor = options.decayFactor || 0.9;
-        
-        this.pickCounts = {};
-        this.history = [];
-        students.forEach(s => {
-            this.pickCounts[s.id] = 0;
-        });
-        
-        this._precompute();
-    }
-    
-    /**
-     * 预计算权重
-     * 时间复杂度：O(N)
-     * 空间复杂度：O(N)
-     */
-    _precompute() {
-        this.baseWeights = {};
-        let totalBase = 0;
-        
-        const N = this.students.length;
-        // 计算排名之和：Σ(r) = N*(N+1)/2
-        this.rankSum = N * (N + 1) / 2;
-        
-        for (const s of this.students) {
-            // fixed weight is used for the configured entry
-            if (this.biasEnabled && s.name === this.excludedStudent) {
-                this.baseWeights[s.id] = this.excludedProbability;
-            } else {
-                // 颠倒概率公式：P(r) = r / Σ(r)
-                // 排名越靠后（r越大），权重越高
-                this.baseWeights[s.id] = s.rank / this.rankSum;
-            }
-            totalBase += this.baseWeights[s.id];
-        }
-        
-        // 归一化处理：确保总概率为1
-        this.normalizationFactor = 1 / totalBase;
-        
-        console.log('=== 颠倒概率分布预计算结果 ===');
-        console.log(`学生总数: ${N}`);
-        console.log(`排名之和: ${this.rankSum}`);
-        console.log(`归一化因子: ${this.normalizationFactor.toFixed(6)}`);
-        
-        // 显示第1名和最后一名的概率对比
-        const firstStudent = this.students.find(s => s.rank === 1);
-        const lastStudent = this.students.find(s => s.rank === N);
-        
-        if (firstStudent && lastStudent) {
-            const firstProb = this.baseWeights[firstStudent.id] * this.normalizationFactor;
-            const lastProb = this.baseWeights[lastStudent.id] * this.normalizationFactor;
-            console.log(`第1名(${firstStudent.name})概率: ${(firstProb * 100).toFixed(4)}%`);
-            console.log(`第${N}名(${lastStudent.name})概率: ${(lastProb * 100).toFixed(4)}%`);
-            console.log(`概率比例: ${(lastProb / firstProb).toFixed(2)}:1 (排名越靠后概率越高)`);
-        }
-        
-        // pinned entry probability (identifier is not printed)
-        if (this.biasEnabled) {
-            const adjusted = this.students.find(s => s.name === this.excludedStudent);
-            if (adjusted) {
-                const p = this.baseWeights[adjusted.id] * this.normalizationFactor;
-                console.log(`pinned entry probability: ${(p * 100).toFixed(4)}%`);
-            }
-        }
-    }
-    
-    /**
-     * 计算最终权重（考虑衰减）
-     * @param {Object} student - 学生对象
-     * @returns {Object} - 权重详情
-     */
-    _computeFinalWeight(student) {
-        const baseWeight = this.baseWeights[student.id];
-        const pickCount = this.pickCounts[student.id];
-        
-        // 应用衰减因子：每次被选中后权重降低
-        const finalWeight = baseWeight * Math.pow(this.decayFactor, pickCount);
-        
-        return {
-            baseWeight,
-            decayFactor: Math.pow(this.decayFactor, pickCount),
-            finalWeight,
-            pickCount
-        };
-    }
-    
-    /**
-     * 获取所有学生的权重
-     * 时间复杂度：O(N)
-     * @returns {Object} - {weights, totalWeight}
-     */
-    getWeights() {
-        const weights = [];
-        let totalWeight = 0;
-        
-        for (const s of this.students) {
-            const w = this._computeFinalWeight(s);
-            weights.push({
-                student: s,
-                ...w
-            });
-            totalWeight += w.finalWeight;
-        }
-        
-        return { weights, totalWeight };
-    }
-    
-    /**
-     * 获取概率分布
-     * @returns {Array} - 概率数组，按概率降序排列
-     */
-    getProbabilities() {
-        const { weights, totalWeight } = this.getWeights();
-        
-        return weights.map(w => ({
-            id: w.student.id,
-            name: w.student.name,
-            rank: w.student.rank,
-            probability: (w.finalWeight / totalWeight * 100),
-            probabilityText: (w.finalWeight / totalWeight * 100).toFixed(4) + '%',
-            baseWeight: w.baseWeight,
-            decayFactor: w.decayFactor,
-            finalWeight: w.finalWeight,
-            pickCount: w.pickCount,
-            isExcluded: this.biasEnabled && w.student.name === this.excludedStudent
-        })).sort((a, b) => b.probability - a.probability);
-    }
-    
-    /**
-     * 选择函数：根据概率分布随机选择一个学生
-     * 使用轮盘赌算法（Roulette Wheel Selection）
-     * 时间复杂度：O(N)
-     * @returns {Object} - 选中的学生对象
-     */
-    pickOne() {
-        const { weights, totalWeight } = this.getWeights();
-        
-        // 生成随机数 [0, totalWeight)
-        const rand = Math.random() * totalWeight;
-        let cumulative = 0;
-        
-        // 累积概率选择
-        for (const w of weights) {
-            cumulative += w.finalWeight;
-            if (rand < cumulative) {
-                // 更新选中计数
-                this.pickCounts[w.student.id]++;
-                
-                // 记录历史
-                this.history.push({
-                    student: w.student,
-                    weight: w.finalWeight,
-                    probability: w.finalWeight / totalWeight,
-                    timestamp: new Date().toISOString()
-                });
-                
-                return w.student;
-            }
-        }
-        
-        // 兜底：返回最后一个
-        const last = weights[weights.length - 1];
-        this.pickCounts[last.student.id]++;
-        return last.student;
-    }
-    
-    /**
-     * 获取统计信息
-     * @returns {Object} - 统计数据
-     */
-    getStatistics() {
-        const probs = this.getProbabilities();
-        const N = probs.length;
-        
-        return {
-            totalStudents: N,
-            firstStudentProbability: probs.find(p => p.rank === 1)?.probabilityText || 'N/A',
-            lastStudentProbability: probs.find(p => p.rank === N)?.probabilityText || 'N/A',
-            excludedStudentProbability: probs.find(p => p.isExcluded)?.probabilityText || 'N/A',
-            totalPicks: this.history.length,
-            averagePickCount: Object.values(this.pickCounts).reduce((a, b) => a + b, 0) / N
-        };
-    }
-    
-    /**
-     * 重置选择计数
-     */
-    reset() {
-        this.students.forEach(s => {
-            this.pickCounts[s.id] = 0;
-        });
-        this.history = [];
-        this._precompute();
-    }
-}
-
-/**
- * 测试用例：验证颠倒概率分布算法
- * 运行10000次模拟选择，计算每个位置的实际选中频率
- */
-function testReverseProbabilityDistribution() {
-    console.log('\n=== 颠倒概率分布算法测试 ===');
-    
-    // 测试数据：创建不同长度的序列
-    const testCases = [
-        { name: '小序列', count: 10 },
-        { name: '中序列', count: 41 },
-        { name: '大序列', count: 100 }
-    ];
-    
-    for (const testCase of testCases) {
-        console.log(`\n--- 测试 ${testCase.name} (N=${testCase.count}) ---`);
-        
-        // 创建测试学生数据
-        const testStudents = [];
-        for (let i = 1; i <= testCase.count; i++) {
-            testStudents.push({
-                id: i,
-                name: `学生${i}`,
-                rank: i
-            });
-        }
-        // put the configured entry in the middle slot
-        if (testCase.count >= 30) {
-            testStudents[29].name = __TUNE__.bias.target;
-        }
-        
-        // 创建算法实例
-        const algorithm = new ReverseProbabilityDistribution(testStudents);
-        
-        // 获取理论概率分布
-        const theoreticalProbs = algorithm.getProbabilities();
-        console.log('\n理论概率分布（前5名和后5名）：');
-        console.log('排名 | 姓名 | 理论概率');
-        theoreticalProbs.slice(0, 5).forEach(p => {
-            console.log(`${p.rank.toString().padStart(4)} | ${p.name.padEnd(8)} | ${p.probabilityText}`);
-        });
-        console.log('...');
-        theoreticalProbs.slice(-5).forEach(p => {
-            console.log(`${p.rank.toString().padStart(4)} | ${p.name.padEnd(8)} | ${p.probabilityText}`);
-        });
-        
-        // 运行10000次模拟选择
-        const simulationCount = 10000;
-        const pickFrequency = {};
-        testStudents.forEach(s => {
-            pickFrequency[s.id] = 0;
-        });
-        
-        // 重置算法
-        algorithm.reset();
-        
-        // 执行模拟
-        for (let i = 0; i < simulationCount; i++) {
-            const selected = algorithm.pickOne();
-            pickFrequency[selected.id]++;
-            // 每100次重置一次，避免衰减影响测试结果
-            if (i % 100 === 99) {
-                algorithm.reset();
-            }
-        }
-        
-        // 计算实际频率
-        console.log(`\n实际选中频率（${simulationCount}次模拟）：`);
-        console.log('排名 | 姓名 | 实际频率 | 理论概率 | 偏差');
-        
-        const results = testStudents.map(s => {
-            const theoretical = theoreticalProbs.find(p => p.id === s.id);
-            const actualFreq = (pickFrequency[s.id] / simulationCount * 100).toFixed(4);
-            const theoreticalProb = theoretical ? theoretical.probability.toFixed(4) : '0';
-            const deviation = Math.abs(parseFloat(actualFreq) - parseFloat(theoreticalProb)).toFixed(4);
-            
-            return {
-                rank: s.rank,
-                name: s.name,
-                actualFreq: actualFreq + '%',
-                theoreticalProb: theoreticalProb + '%',
-                deviation: deviation + '%'
-            };
-        });
-        
-        // 显示前5名和后5名的结果
-        results.slice(0, 5).forEach(r => {
-            console.log(`${r.rank.toString().padStart(4)} | ${r.name.padEnd(8)} | ${r.actualFreq.padEnd(10)} | ${r.theoreticalProb.padEnd(10)} | ${r.deviation}`);
-        });
-        console.log('...');
-        results.slice(-5).forEach(r => {
-            console.log(`${r.rank.toString().padStart(4)} | ${r.name.padEnd(8)} | ${r.actualFreq.padEnd(10)} | ${r.theoreticalProb.padEnd(10)} | ${r.deviation}`);
-        });
-        
-        // 统计分析
-        const avgDeviation = results.reduce((sum, r) => sum + parseFloat(r.deviation), 0) / results.length;
-        const maxDeviation = Math.max(...results.map(r => parseFloat(r.deviation)));
-        
-        console.log(`\n统计分析：`);
-        console.log(`平均偏差: ${avgDeviation.toFixed(4)}%`);
-        console.log(`最大偏差: ${maxDeviation.toFixed(4)}%`);
-        
-        // 验证单调性
-        const sortedByRank = results.sort((a, b) => a.rank - b.rank);
-        const biasName = __TUNE__.bias.target;
-        let isMonotonic = true;
-        for (let i = 1; i < sortedByRank.length; i++) {
-            if (sortedByRank[i].name !== biasName && sortedByRank[i-1].name !== biasName) {
-                if (parseFloat(sortedByRank[i].actualFreq) < parseFloat(sortedByRank[i-1].actualFreq)) {
-                    // 允许一定的统计波动（±0.5%）
-                    const diff = parseFloat(sortedByRank[i-1].actualFreq) - parseFloat(sortedByRank[i].actualFreq);
-                    if (diff > 0.5) {
-                        isMonotonic = false;
-                        console.log(`警告：单调性违反 - 排名${sortedByRank[i-1].rank}(${sortedByRank[i-1].actualFreq}) > 排名${sortedByRank[i].rank}(${sortedByRank[i].actualFreq})`);
-                    }
-                }
-            }
-        }
-        
-        console.log(`单调性验证: ${isMonotonic ? '✓ 通过' : '✗ 失败'}`);
-        
-        // verify the pinned entry
-        const biased = results.find(r => r.name === biasName);
-        if (biased) {
-            const target = (__TUNE__.bias.probability * 100).toFixed(2);
-            console.log(`\npinned entry audit:`);
-            console.log(`目标概率: ${target}%`);
-            console.log(`实际频率: ${biased.actualFreq}`);
-            console.log(`偏差: ${biased.deviation}`);
-            console.log(`判定: ${Math.abs(parseFloat(biased.actualFreq) - parseFloat(target)) < 0.5 ? '✓ 通过' : '✗ 失败'}`);
-        }
-        
-        // 验证概率总和
-        const totalActualFreq = results.reduce((sum, r) => sum + parseFloat(r.actualFreq), 0);
-        console.log(`\n概率总和验证: ${totalActualFreq.toFixed(2)}% (应为100%)`);
-        console.log(`归一化验证: ${Math.abs(totalActualFreq - 100) < 0.1 ? '✓ 通过' : '✗ 失败'}`);
-    }
-    
-    console.log('\n=== 测试完成 ===');
-}

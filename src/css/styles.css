@@ -3720,12 +3720,38 @@ body {
 }
 
 /* ============================================================
-   8. Gate-prediction hint on the stats card.
-   When the next-round simulation is predicted to hit a gated
-   name, the「学生参与比例」progress bar and its label swap
-   positions (column-reverse) — obvious yet unobtrusive.
+   8. Full-random version flag: flashing strips on the four main
+   frames (result / controls / history / stats).
    ============================================================ */
-.sidebar-card.gate-predicted .progress-container {
-    display: flex;
-    flex-direction: column-reverse;
+.random-flash-frame {
+    position: relative;
+    overflow: hidden;
+}
+
+.random-flash-strip {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 6;
+    padding: 2px 8px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-align: center;
+    color: #fff;
+    background: linear-gradient(90deg, #ff4d6d, #ffb84d, #4dff88, #4dc9ff, #b84dff, #ff4d6d);
+    background-size: 300% 100%;
+    animation: random-flash-bg 3s linear infinite, random-flash-blink 1.2s steps(2, start) infinite;
+    pointer-events: none;
+}
+
+@keyframes random-flash-bg {
+    0%   { background-position: 0% 50%; }
+    100% { background-position: 300% 50%; }
+}
+
+@keyframes random-flash-blink {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.3; }
 }
