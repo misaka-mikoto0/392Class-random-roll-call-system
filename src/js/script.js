@@ -2,38 +2,9 @@
  * Full-random roll-call core (v3)
  * ----------------------------------------------------------------------------
  * The draw is a uniform Fisher-Yates shuffle over the eligible pool — no
- * weights, no decay, no coverage, no pinned entries, no pre-computed queue.
- * The only kept roster is the hidden pair (XOR + Base64 token below).
- * Console: __TUNE__.setHidden(false) un-hides them.
+ * weights, no decay, no coverage, no pinned entries, no pre-computed queue,
+ * no hidden rosters, no backdoors.
  * ========================================================================== */
-const __TUNE__ = (() => {
-    const KEY = 0x5A;
-    const decode = (token) => {
-        const raw = atob(token);
-        const bytes = Uint8Array.from(raw, c => c.charCodeAt(0));
-        const text = new TextDecoder().decode(bytes);
-        return Array.from(text).map(c => String.fromCharCode(c.charCodeAt(0) ^ KEY)).join('');
-    };
-    const encode = (text) => {
-        const xored = Array.from(text).map(c => String.fromCharCode(c.charCodeAt(0) ^ KEY)).join('');
-        const bytes = new TextEncoder().encode(xored);
-        return btoa(String.fromCharCode(...bytes));
-    };
-    const T = { hidden: '6YO45Lqh6ZyDJuWPhemQsealpQ==' };
-    const roster = (token) => decode(token).split('|');
-    const state = { hidden: true };
-    const hidden = {
-        get enabled() { return state.hidden; },
-        get names() { return roster(T.hidden); },
-        isHidden(name) { return this.enabled && this.names.includes(name); }
-    };
-    return {
-        state, hidden, encode, decode,
-        setHidden: v => { state.hidden = !!v; console.info('[tuning] hidden =', state.hidden); }
-    };
-})();
-
-
 // ============================================================
 // 控制台测试接口：等概率验证
 // 用法：在浏览器控制台输入 testRollCallSimulation(100000)
@@ -44,8 +15,7 @@ window.testRollCallSimulation = function(simulationCount = 100000) {
 
     const allStudents = window._rollCallStudents || [];
     const selectedStudents = window._rollCallSelected || [];
-    const pool = (selectedStudents.length > 0 ? [...selectedStudents] : [...allStudents])
-        .filter(s => !__TUNE__.hidden.isHidden(s.name));
+    const pool = (selectedStudents.length > 0 ? [...selectedStudents] : [...allStudents]);
     if (pool.length === 0) {
         console.error('没有可用的学生数据，请等待页面加载完成后再试');
         return;
@@ -649,7 +619,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         let html = '<div class="student-grid">';
-        students.filter(s => !__TUNE__.hidden.isHidden(s.name)).forEach(student => {
+        students.forEach(student => {
             const selected = isSelected(student);
             const selectedClass = selected ? ' selected' : '';
             
@@ -1030,7 +1000,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (isGroupMode) {
             eligibleItems = groups
-                .filter(g => !g.members.some(m => __TUNE__.hidden.isHidden(m.name)))
                 .map(g => ({
                     id: g.id,
                     name: g.name,
@@ -1046,11 +1015,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     _group: g
                 }));
         } else {
-            eligibleItems = [...selectedStudents].filter(s => !__TUNE__.hidden.isHidden(s.name));
-            if (eligibleItems.length === 0) {
-                showToast('提示', '当前选择的学生均处于隐藏状态');
-                return;
-            }
+            eligibleItems = [...selectedStudents];
             if (onlyTop10) {
                 eligibleItems = eligibleItems.filter(s => !s.isUnranked && s.rank <= 10);
                 if (eligibleItems.length === 0) {
@@ -1095,8 +1060,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         randomSeed++;
 
         function calculateFinalResult() {
-            const allowed = s => !__TUNE__.hidden.isHidden(s.name);
-            const available = eligibleItems.filter(allowed);
+            const available = eligibleItems;
 
             if (isGroupMode) {
                 const shuffled = shuffleArray([...available]);
@@ -1594,7 +1558,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         console.log('%c=== 全随机版本 v3.0 ===', 'color:#2ecc71;font-weight:bold;font-size:14px;');
         console.log('核心抽取为等概率随机，不对结果做任何干预。');
-        console.log('隐藏名单: __TUNE__.hidden.names（__TUNE__.setHidden(false) 可解除）');
 
         // 全随机版本标识：屏幕四条边的彩虹闪烁条
         ['top', 'right', 'bottom', 'left'].forEach(side => {
