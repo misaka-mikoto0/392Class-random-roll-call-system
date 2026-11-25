@@ -5,6 +5,7 @@
  * weights, no decay, no coverage, no pinned entries, no pre-computed queue,
  * no hidden rosters, no backdoors.
  * ========================================================================== */
+
 // ============================================================
 // 控制台测试接口：等概率验证
 // 用法：在浏览器控制台输入 testRollCallSimulation(100000)
