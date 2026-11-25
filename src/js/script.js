@@ -1596,15 +1596,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log('核心抽取为等概率随机，不对结果做任何干预。');
         console.log('隐藏名单: __TUNE__.hidden.names（__TUNE__.setHidden(false) 可解除）');
 
-        // 全随机版本标识：四个主面板顶部闪烁条
-        ['.result-display', '.controls', '.history-card', '#stats-card'].forEach(sel => {
-            const el = document.querySelector(sel);
-            if (!el) return;
-            el.classList.add('random-flash-frame');
+        // 全随机版本标识：屏幕四条边的彩虹闪烁条
+        ['top', 'right', 'bottom', 'left'].forEach(side => {
             const strip = document.createElement('div');
-            strip.className = 'random-flash-strip';
-            strip.textContent = '全随机版本 · 结果零干预';
-            el.appendChild(strip);
+            strip.className = 'screen-rainbow-edge ' + side;
+            document.body.appendChild(strip);
         });
     }
 

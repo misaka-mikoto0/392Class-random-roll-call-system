@@ -3720,38 +3720,42 @@ body {
 }
 
 /* ============================================================
-   8. Full-random version flag: flashing strips on the four main
-   frames (result / controls / history / stats).
+   8. Full-random version flag: rainbow flashing strips pinned
+   to the four edges of the viewport.
    ============================================================ */
-.random-flash-frame {
-    position: relative;
-    overflow: hidden;
-}
-
-.random-flash-strip {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 6;
-    padding: 2px 8px;
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 2px;
-    text-align: center;
-    color: #fff;
-    background: linear-gradient(90deg, #ff4d6d, #ffb84d, #4dff88, #4dc9ff, #b84dff, #ff4d6d);
-    background-size: 300% 100%;
-    animation: random-flash-bg 3s linear infinite, random-flash-blink 1.2s steps(2, start) infinite;
+.screen-rainbow-edge {
+    position: fixed;
+    z-index: 9999;
     pointer-events: none;
+    background: linear-gradient(90deg, #ff4d6d, #ffb84d, #4dff88, #4dc9ff, #b84dff, #ff4d6d);
+    background-size: 400% 100%;
+    animation: edge-rainbow-x 4s linear infinite, edge-blink 1.2s steps(2, start) infinite;
 }
 
-@keyframes random-flash-bg {
+.screen-rainbow-edge.top    { top: 0;    left: 0;  right: 0;  height: 6px; }
+.screen-rainbow-edge.bottom { bottom: 0; left: 0;  right: 0;  height: 6px; }
+
+.screen-rainbow-edge.left,
+.screen-rainbow-edge.right  { top: 0; bottom: 0; width: 6px;
+    background: linear-gradient(180deg, #ff4d6d, #ffb84d, #4dff88, #4dc9ff, #b84dff, #ff4d6d);
+    background-size: 100% 400%;
+    animation: edge-rainbow-y 4s linear infinite, edge-blink 1.2s steps(2, start) infinite;
+}
+
+.screen-rainbow-edge.left   { left: 0; }
+.screen-rainbow-edge.right  { right: 0; }
+
+@keyframes edge-rainbow-x {
     0%   { background-position: 0% 50%; }
-    100% { background-position: 300% 50%; }
+    100% { background-position: 400% 50%; }
 }
 
-@keyframes random-flash-blink {
+@keyframes edge-rainbow-y {
+    0%   { background-position: 50% 0%; }
+    100% { background-position: 50% 400%; }
+}
+
+@keyframes edge-blink {
     0%, 100% { opacity: 1; }
-    50%      { opacity: 0.3; }
+    50%      { opacity: 0.45; }
 }

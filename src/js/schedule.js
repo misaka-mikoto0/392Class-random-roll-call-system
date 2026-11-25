@@ -46,7 +46,7 @@ const DEFAULT_PERIODS = Object.freeze([
  */
 const BUILD_META = Object.freeze({
     /** 语义化版本号：每次发版或功能有显著变化时递增 */
-    VERSION: '3.0.0',
+    VERSION: '3.0.1',
     /** 构建日期（YYYY-MM-DD）：与代码最后一次打包/发布日期保持一致 */
     BUILD_DATE: '2026-11-24',
     /** 简短变更摘要，用于控制台输出提示（不显示在 UI 上） */
@@ -55,7 +55,8 @@ const BUILD_META = Object.freeze({
         '移除：预演算队列与兑现机制、预测提示、公平纠偏、全部调参后门（slot/bias/aid/gate/settle）及备用颠倒概率算法类',
         '保留：郭迅宇、赵育敏隐藏（__TUNE__.hidden，控制台 setHidden(false) 可解除）与防苍蝇色块校验',
         '新增：页面四个主面板顶部闪烁条，标识全随机版本（结果零干预）',
-        '变更：控制台模拟工具改为等概率验证（testRollCallSimulation）'
+        '变更：控制台模拟工具改为等概率验证（testRollCallSimulation）',
+        '变更：全随机标识改为屏幕四条边的彩虹闪烁描边（水平/垂直方向滚动 + 呼吸闪烁），替换原先面板内的提示条'
     ]
 });
 
